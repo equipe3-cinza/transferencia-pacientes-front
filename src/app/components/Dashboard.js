@@ -6,7 +6,7 @@ import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
 
 // Componente para adicionar novos registros
-const FormularioAdicionar = ({ tipo, onAdicionar }) => {
+const FormularioAdicionar = ({ tipo }) => {
   const [nome, setNome] = useState("");
 
   const handleSubmit = async (e) => {
@@ -18,7 +18,6 @@ const FormularioAdicionar = ({ tipo, onAdicionar }) => {
       const novoRef = push(tipoRef);
       await set(novoRef, { nome });
 
-      onAdicionar({ id: novoRef.key, nome });
       setNome("");
     } catch (error) {
       console.error(`Erro ao adicionar ${tipo}`, error);
@@ -43,33 +42,76 @@ const FormularioAdicionar = ({ tipo, onAdicionar }) => {
 
 // Componente para listar registros
 const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
-  return (
-    <div className="mb-8 w-full">
-      <h3 className="text-xl font-semibold mb-2 capitalize">{tipo}</h3>
-      <ul className="space-y-2">
-        {registros.map((registro) => (
-          <li key={registro.id} className="flex justify-between items-center p-2 border rounded">
-            <span>{registro.nome}</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => onEditar(registro.id, tipo)}
-                className="text-yellow-600 hover:underline"
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => onExcluir(registro.id, tipo)}
-                className="text-red-600 hover:underline"
-              >
-                Excluir
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+    const [editandoId, setEditandoId] = useState(null);
+    const [novoNome, setNovoNome] = useState("");
+  
+    const handleSalvar = () => {
+      if (novoNome.trim() && editandoId) {
+        onEditar(editandoId, tipo, novoNome);
+        setEditandoId(null);
+        setNovoNome("");
+      }
+    };
+  
+    return (
+      <div className="mb-8 w-full">
+        <h3 className="text-xl font-semibold mb-2 capitalize">{tipo}</h3>
+        <ul className="space-y-2">
+          {registros.map((registro) => (
+            <li key={registro.id} className="flex justify-between items-center p-2 border rounded">
+              {editandoId === registro.id ? (
+                <input
+                  type="text"
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSalvar();
+                    if (e.key === "Escape") {
+                      setEditandoId(null);
+                      setNovoNome("");
+                    }
+                  }}
+                  autoFocus
+                  className="border rounded px-2 py-1 flex-1"
+                />
+              ) : (
+                <span>{registro.nome}</span>
+              )}
+              <div className="flex gap-2">
+                {editandoId === registro.id ? (
+                  <button
+                    onClick={handleSalvar}
+                    className="text-green-600 hover:underline"
+                  >
+                    Salvar
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditandoId(registro.id);
+                        setNovoNome(registro.nome);
+                      }}
+                      className="text-yellow-600 hover:underline"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => onExcluir(registro.id, tipo)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Excluir
+                    </button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+  
 
 // Componente principal
 const Dashboard = () => {
@@ -109,14 +151,13 @@ const Dashboard = () => {
     }));
   };
 
-  const editarRegistro = async (id, tipo) => {
-    const novoNome = prompt("Digite o novo nome:");
-    if (!novoNome) return;
-
+  const editarRegistro = async (id, tipo, novoNome) => {
+    if (!novoNome.trim()) return;
+  
     try {
       const registroRef = ref(database, `${tipo}/${id}`);
       await update(registroRef, { nome: novoNome });
-
+  
       setDados((prev) => ({
         ...prev,
         [tipo]: prev[tipo].map((item) => (item.id === id ? { ...item, nome: novoNome } : item)),
@@ -125,6 +166,7 @@ const Dashboard = () => {
       console.error(`Erro ao editar ${tipo}`, error);
     }
   };
+  
 
   const excluirRegistro = async (id, tipo) => {
     try {
