@@ -54,62 +54,65 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
     };
   
     return (
-      <div className="mb-8 w-full">
-        <h3 className="text-xl font-semibold mb-2 capitalize">{tipo}</h3>
-        <ul className="space-y-2">
-          {registros.map((registro) => (
-            <li key={registro.id} className="flex justify-between items-center p-2 border rounded">
-              {editandoId === registro.id ? (
-                <input
-                  type="text"
-                  value={novoNome}
-                  onChange={(e) => setNovoNome(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSalvar();
-                    if (e.key === "Escape") {
-                      setEditandoId(null);
-                      setNovoNome("");
-                    }
-                  }}
-                  autoFocus
-                  className="border rounded px-2 py-1 flex-1"
-                />
-              ) : (
-                <span>{registro.nome}</span>
-              )}
-              <div className="flex gap-2">
+        <div className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 capitalize text-center">{tipo}</h2>
+          <ul className="space-y-4">
+            {registros.map((registro) => (
+              <li
+                key={registro.id}
+                className="flex items-center justify-between bg-gray-900 p-4 rounded shadow-sm border"
+              >
                 {editandoId === registro.id ? (
-                  <button
-                    onClick={handleSalvar}
-                    className="text-green-600 hover:underline"
-                  >
-                    Salvar
-                  </button>
+                  <input
+                    type="text"
+                    value={novoNome}
+                    onChange={(e) => setNovoNome(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSalvar();
+                      if (e.key === "Escape") {
+                        setEditandoId(null);
+                        setNovoNome("");
+                      }
+                    }}
+                    autoFocus
+                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setEditandoId(registro.id);
-                        setNovoNome(registro.nome);
-                      }}
-                      className="text-yellow-600 hover:underline"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => onExcluir(registro.id, tipo)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Excluir
-                    </button>
-                  </>
+                  <span className="flex-1">{registro.nome}</span>
                 )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+                <div className="flex gap-2 ml-4">
+                  {editandoId === registro.id ? (
+                    <button
+                      onClick={handleSalvar}
+                      className="text-green-600 hover:text-green-800 font-medium"
+                    >
+                      Salvar
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditandoId(registro.id);
+                          setNovoNome(registro.nome);
+                        }}
+                        className="text-yellow-500 hover:text-yellow-700 font-medium"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => onExcluir(registro.id, tipo)}
+                        className="text-red-500 hover:text-red-700 font-medium"
+                      >
+                        Excluir
+                      </button>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
   };
   
 
@@ -184,22 +187,24 @@ const Dashboard = () => {
 
   return (
     <>
-    <Navbar />
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-center">Dashboard de Gerenciamento</h1>
+      <Navbar />
+      <div className="flex items-center justify-center bg-black">
+        <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
+          <h1 className="text-3xl font-bold mb-10 text-center">Dashboard de Gerenciamento</h1>
 
-      {Object.entries(dados).map(([tipo, registros]) => (
-        <div key={tipo} className="mb-12">
-          <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
-          <ListaRegistros
-            registros={registros}
-            tipo={tipo}
-            onEditar={editarRegistro}
-            onExcluir={excluirRegistro}
-          />
+          {Object.entries(dados).map(([tipo, registros]) => (
+            <div key={tipo}>
+              <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
+              <ListaRegistros
+                registros={registros}
+                tipo={tipo}
+                onEditar={editarRegistro}
+                onExcluir={excluirRegistro}
+              />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </div>
     </>
   );
 };

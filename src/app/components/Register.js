@@ -1,88 +1,136 @@
 "use client";
-
 import { useState } from "react";
+import { registerUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
-const Register = () => {
-  const [name, setName] = useState("");         // <-- Novo useState para nome
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+export default function Register() {
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+        nome: "",
+        role: "medico",
+        hospital: "",
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const router = useRouter();
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
 
-    try {
-      // Cria o usuário
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (!formData.hospital) {
+            setError("Selecione um hospital");
+            setLoading(false);
+            return;
+        }
 
-      // Atualiza o perfil com o nome
-      await updateProfile(userCredential.user, {
-        displayName: name
-      });
+        const { email, password, nome, role, hospital } = formData;
 
-      // Redireciona para login
-      router.push("/login");
-    } catch (err) {
-      setError("Erro ao cadastrar: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const result = await registerUser(email, password, {
+            nome,
+            role,
+            hospital,
+        });
 
-  return (
-    <div className="flex flex-col items-center min-h-screen">
-      <h1 className="text-2xl mb-6">Cadastrar-se</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col w-72 gap-4">
-        <input
-          type="text"
-          placeholder="Nome"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="p-2 border rounded"
-          required
-        />
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="p-2 border rounded"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="p-2 border rounded"
-          required
-        />
-        {error && <div className="text-red-500 text-sm">{error}</div>}
-        <button
-          type="submit"
-          className="bg-blue-500 text-white py-2 rounded mt-4"
-          disabled={loading}
-        >
-          {loading ? "Cadastrando..." : "Cadastrar"}
-        </button>
-      </form>
-      <div className="mt-4">
-        <span>Já tem uma conta? </span>
-        <button
-          onClick={() => router.push("/")}
-          className="text-blue-500 hover:underline cursor-pointer"
-        >
-          Faça login
-        </button>
-      </div>
-    </div>
-  );
-};
+        if (result.success) {
+            router.push("/dashboard");
+        } else {
+            setError(result.error);
+            setLoading(false);
+        }
+    };
 
-export default Register;
+    return (
+        <div className="flex items-center justify-center bg-black">
+            <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
+                <h1 className="text-2xl font-bold mb-6 text-center text-white">Cadastro</h1>
+
+                {error && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block mb-1 text-white">Nome Completo</label>
+                        <input
+                            type="text"
+                            value={formData.nome}
+                            onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                            className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block mb-1 text-white">Email</label>
+                        <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block mb-1 text-white">Senha</label>
+                        <input
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
+                            required
+                            minLength="6"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block mb-1 text-white">Tipo de Usuário</label>
+                        <select
+                            value={formData.role}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
+                            required
+                        >
+                            <option value="medico">Médico</option>
+                            <option value="enfermeiro">Enfermeiro</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block mb-1 text-white">Hospital</label>
+                        <select
+                            value={formData.hospital}
+                            onChange={(e) => setFormData({ ...formData, hospital: e.target.value })}
+                            className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
+                            required
+                        >
+                            <option value="">Selecione um hospital</option>
+                            <option value="hospital1">Hospital Central</option>
+                            <option value="hospital2">Hospital Norte</option>
+                        </select>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+                    >
+                        {loading ? "Cadastrando..." : "Cadastrar"}
+                    </button>
+                </form>
+                <div className="mt-4">
+                    <span>Já tem uma conta? </span>
+                    <button
+                        onClick={() => router.push("/")}
+                        className="text-blue-500 hover:underline cursor-pointer"
+                    >
+                        Faça login
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

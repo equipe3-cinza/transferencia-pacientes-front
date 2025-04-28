@@ -18,7 +18,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav style={{ display: "flex", justifyContent: "space-between", padding: "10px 20px" }}>
+    <nav style={{ display: "flex", justifyContent: "right", padding: "10px 20px" }}>
       <div>
         <button onClick={handleLogout} style={{ padding: "8px 16px", backgroundColor: "#e53935", color: "white", border: "none", borderRadius: "4px" }}>
           Logout
