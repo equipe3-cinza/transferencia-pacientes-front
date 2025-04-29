@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { database } from "@/lib/firebase";
+import { database, auth } from "@/lib/firebase";
+import { getUserRole } from "@/lib/auth";
 import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
+import { Notifications } from "@/app/components/Notifications";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
@@ -33,7 +35,7 @@ const FormularioAdicionar = ({ tipo }) => {
         placeholder={`Adicionar ${tipo}`}
         className="border rounded px-2 py-1 flex-1"
       />
-      <button type="submit" className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600">
+      <button type="submit" className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 cursor-pointer">
         Adicionar
       </button>
     </form>
@@ -84,7 +86,7 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
                   {editandoId === registro.id ? (
                     <button
                       onClick={handleSalvar}
-                      className="text-green-600 hover:text-green-800 font-medium"
+                      className="text-green-600 hover:text-green-800 font-medium cursor-pointer"
                     >
                       Salvar
                     </button>
@@ -95,13 +97,13 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
                           setEditandoId(registro.id);
                           setNovoNome(registro.nome);
                         }}
-                        className="text-yellow-500 hover:text-yellow-700 font-medium"
+                        className="text-yellow-500 hover:text-yellow-700 font-medium cursor-pointer"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => onExcluir(registro.id, tipo)}
-                        className="text-red-500 hover:text-red-700 font-medium"
+                        className="text-red-500 hover:text-red-700 font-medium cursor-pointer"
                       >
                         Excluir
                       </button>
@@ -118,12 +120,44 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
 
 // Componente principal
 const Dashboard = () => {
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [currentHospital, setCurrentHospital] = useState(null);
   const [dados, setDados] = useState({
     pacientes: [],
     medicos: [],
     comodos: [],
     especialidades: [],
   });
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        setUser(user);
+        try {
+          const role = await getUserRole(user.uid);
+          setUserRole(role);
+          
+          // Carregar hospital do usuário
+          const userHospitalRef = ref(database, `users/${user.uid}/hospital`);
+          console.log(userHospitalRef);
+          onValue(userHospitalRef, (snapshot) => {
+            setCurrentHospital(snapshot.val());
+          });
+        } catch (error) {
+          console.error("Erro ao carregar dados do usuário:", error);
+          setUserRole(null);
+          setCurrentHospital(null);
+        }
+      } else {
+        setUser(null);
+        setUserRole(null);
+        setCurrentHospital(null);
+      }
+    });
+  
+    return () => unsubscribe();
+  }, []);
 
   const fetchRegistros = (tipo) => {
     const tipoRef = ref(database, tipo);
@@ -185,24 +219,42 @@ const Dashboard = () => {
     }
   };
 
+  if (!user) {
+    return <div>Carregando...</div>;
+  }
+
   return (
     <>
-      <Navbar />
+      <Navbar user={user} userRole={userRole} currentHospital={currentHospital}/>
       <div className="flex items-center justify-center bg-black">
         <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
-          <h1 className="text-3xl font-bold mb-10 text-center">Dashboard de Gerenciamento</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center">
+          Dashboard do {currentHospital || "Hospital"}
+        </h1>
 
-          {Object.entries(dados).map(([tipo, registros]) => (
-            <div key={tipo}>
-              <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
-              <ListaRegistros
-                registros={registros}
-                tipo={tipo}
-                onEditar={editarRegistro}
-                onExcluir={excluirRegistro}
-              />
-            </div>
-          ))}
+        {/* Seção de Transferências para Supervisores */}
+        {userRole === "supervisor" && (
+          <TransferRequests 
+            currentHospital={currentHospital} 
+            user={user}
+            pacientes={dados.pacientes}
+            hospitais={dados.hospitais.filter(h => h.id !== currentHospital)}
+          />
+        )}
+
+        {/* Seções de Gerenciamento */}
+        {Object.entries(dados).map(([tipo, registros]) => (
+          <div key={tipo} className="mb-12">
+            <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
+            <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
+            <ListaRegistros
+              registros={registros}
+              tipo={tipo}
+              onEditar={editarRegistro}
+              onExcluir={excluirRegistro}
+            />
+          </div>
+        ))}
         </div>
       </div>
     </>

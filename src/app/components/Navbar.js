@@ -5,7 +5,7 @@ import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 const Navbar = () => {
-    const router = useRouter();
+  const router = useRouter();
 
 
   const handleLogout = async () => {
@@ -20,7 +20,10 @@ const Navbar = () => {
   return (
     <nav style={{ display: "flex", justifyContent: "right", padding: "10px 20px" }}>
       <div>
-        <button onClick={handleLogout} style={{ padding: "8px 16px", backgroundColor: "#e53935", color: "white", border: "none", borderRadius: "4px" }}>
+        <button
+          onClick={handleLogout}
+          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 cursor-pointer hover:bg-red-700"
+        >
           Logout
         </button>
       </div>

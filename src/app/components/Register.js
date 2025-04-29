@@ -108,15 +108,15 @@ export default function Register() {
                             required
                         >
                             <option value="">Selecione um hospital</option>
-                            <option value="hospital1">Hospital Central</option>
-                            <option value="hospital2">Hospital Norte</option>
+                            <option value="Hospital Central">Hospital Central</option>
+                            <option value="Hospital Norte">Hospital Norte</option>
                         </select>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+                        className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300 cursor-pointer"
                     >
                         {loading ? "Cadastrando..." : "Cadastrar"}
                     </button>

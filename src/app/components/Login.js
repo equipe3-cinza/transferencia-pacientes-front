@@ -3,7 +3,8 @@
 "use client";
 
 import { useState } from "react";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 const Login = () => {
@@ -15,7 +16,6 @@ const Login = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        const auth = getAuth();
         try {
             await signInWithEmailAndPassword(auth, email, password);
             // Redireciona para a página principal após o login bem-sucedido
@@ -47,7 +47,7 @@ const Login = () => {
                     {error && <div className="text-red-500 text-sm">{error}</div>}
                     <button
                         type="submit"
-                        className="bg-blue-500 text-white py-2 rounded mt-4"
+                        className="bg-blue-500 text-white py-2 rounded mt-4 cursor-pointer hover:bg-blue-600"
                     >
                         Entrar
                     </button>
