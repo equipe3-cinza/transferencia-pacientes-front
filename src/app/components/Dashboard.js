@@ -5,7 +5,6 @@ import { database, auth } from "@/lib/firebase";
 import { getUserRole } from "@/lib/auth";
 import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
-import { Notifications } from "@/app/components/Notifications";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
@@ -224,7 +223,7 @@ const Dashboard = () => {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-100">
       <Navbar user={user} userRole={userRole} currentHospital={currentHospital}/>
       <div className="flex items-center justify-center bg-black">
         <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
@@ -257,7 +256,7 @@ const Dashboard = () => {
         ))}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

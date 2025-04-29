@@ -1,12 +1,13 @@
-// Navbar.js
-import React from "react";
+import React, { useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { BellIcon } from "@heroicons/react/24/outline";
+import Notifications from "@/app/components/Notifications";
 
-const Navbar = () => {
+const Navbar = ({ user, userRole, currentHospital }) => {
   const router = useRouter();
-
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -17,12 +18,35 @@ const Navbar = () => {
     }
   };
 
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
+  };
+
   return (
-    <nav style={{ display: "flex", justifyContent: "right", padding: "10px 20px" }}>
-      <div>
+    <nav className="sticky top-0 z-50 flex justify-between items-center p-4 bg-gray-800 text-white w-full">
+      <div className="text-xl font-bold">
+        {currentHospital || "Hospital"} Dashboard
+      </div>
+      
+      <div className="flex items-center space-x-4 relative">
+        <button 
+          onClick={toggleNotifications} 
+          className="relative p-2 hover:bg-gray-700 rounded-full"
+        >
+          <BellIcon className="h-6 w-6" />
+        </button>
+
+        {/* Renderize apenas o componente Notifications diretamente */}
+        {showNotifications && (
+          <Notifications 
+            userId={user?.uid} 
+            onClose={toggleNotifications} 
+          />
+        )}
+
         <button
           onClick={handleLogout}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 cursor-pointer hover:bg-red-700"
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors"
         >
           Logout
         </button>
