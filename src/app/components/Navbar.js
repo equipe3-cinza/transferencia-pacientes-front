@@ -33,10 +33,9 @@ const Navbar = ({ user, userRole, currentHospital }) => {
           onClick={toggleNotifications} 
           className="relative p-2 hover:bg-gray-700 rounded-full"
         >
-          <BellIcon className="h-6 w-6" />
+          <BellIcon className="h-6 w-6 cursor-pointer"  />
         </button>
 
-        {/* Renderize apenas o componente Notifications diretamente */}
         {showNotifications && (
           <Notifications 
             userId={user?.uid} 
