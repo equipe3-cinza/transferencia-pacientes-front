@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { database, auth } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { getUserRole } from "@/lib/auth";
 import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
+import TransferRequests from "@/app/components/TransferRequests";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
@@ -15,7 +16,7 @@ const FormularioAdicionar = ({ tipo }) => {
     if (!nome.trim()) return;
 
     try {
-      const tipoRef = ref(database, tipo);
+      const tipoRef = ref(db, tipo);
       const novoRef = push(tipoRef);
       await set(novoRef, { nome });
 
@@ -43,79 +44,81 @@ const FormularioAdicionar = ({ tipo }) => {
 
 // Componente para listar registros
 const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
-    const [editandoId, setEditandoId] = useState(null);
-    const [novoNome, setNovoNome] = useState("");
-  
-    const handleSalvar = () => {
-      if (novoNome.trim() && editandoId) {
-        onEditar(editandoId, tipo, novoNome);
-        setEditandoId(null);
-        setNovoNome("");
-      }
-    };
-  
-    return (
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold mb-6 capitalize text-center">{tipo}</h2>
-          <ul className="space-y-4">
-            {registros.map((registro) => (
-              <li
-                key={registro.id}
-                className="flex items-center justify-between bg-gray-900 p-4 rounded shadow-sm border"
-              >
-                {editandoId === registro.id ? (
-                  <input
-                    type="text"
-                    value={novoNome}
-                    onChange={(e) => setNovoNome(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSalvar();
-                      if (e.key === "Escape") {
-                        setEditandoId(null);
-                        setNovoNome("");
-                      }
-                    }}
-                    autoFocus
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                ) : (
-                  <span className="flex-1">{registro.nome}</span>
-                )}
-                <div className="flex gap-2 ml-4">
-                  {editandoId === registro.id ? (
-                    <button
-                      onClick={handleSalvar}
-                      className="text-green-600 hover:text-green-800 font-medium cursor-pointer"
-                    >
-                      Salvar
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditandoId(registro.id);
-                          setNovoNome(registro.nome);
-                        }}
-                        className="text-yellow-500 hover:text-yellow-700 font-medium cursor-pointer"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => onExcluir(registro.id, tipo)}
-                        className="text-red-500 hover:text-red-700 font-medium cursor-pointer"
-                      >
-                        Excluir
-                      </button>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
+  const [editandoId, setEditandoId] = useState(null);
+  const [novoNome, setNovoNome] = useState("");
+
+
+
+  const handleSalvar = () => {
+    if (novoNome.trim() && editandoId) {
+      onEditar(editandoId, tipo, novoNome);
+      setEditandoId(null);
+      setNovoNome("");
+    }
   };
-  
+
+  return (
+    <div className="mb-12">
+      <h2 className="text-2xl font-semibold mb-6 capitalize text-center">{tipo}</h2>
+      <ul className="space-y-4">
+        {registros?.map((registro) => (
+          <li
+            key={registro.id}
+            className="flex items-center justify-between bg-gray-900 p-4 rounded shadow-sm border"
+          >
+            {editandoId === registro.id ? (
+              <input
+                type="text"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSalvar();
+                  if (e.key === "Escape") {
+                    setEditandoId(null);
+                    setNovoNome("");
+                  }
+                }}
+                autoFocus
+                className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <span className="flex-1">{registro.nome}</span>
+            )}
+            <div className="flex gap-2 ml-4">
+              {editandoId === registro.id ? (
+                <button
+                  onClick={handleSalvar}
+                  className="text-green-600 hover:text-green-800 font-medium cursor-pointer"
+                >
+                  Salvar
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setEditandoId(registro.id);
+                      setNovoNome(registro.nome);
+                    }}
+                    className="text-yellow-500 hover:text-yellow-700 font-medium cursor-pointer"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => onExcluir(registro.id, tipo)}
+                    className="text-red-500 hover:text-red-700 font-medium cursor-pointer"
+                  >
+                    Excluir
+                  </button>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 
 // Componente principal
 const Dashboard = () => {
@@ -127,6 +130,7 @@ const Dashboard = () => {
     medicos: [],
     comodos: [],
     especialidades: [],
+    hospitais: [],
   });
 
   useEffect(() => {
@@ -136,10 +140,9 @@ const Dashboard = () => {
         try {
           const role = await getUserRole(user.uid);
           setUserRole(role);
-          
+
           // Carregar hospital do usuário
-          const userHospitalRef = ref(database, `users/${user.uid}/hospital`);
-          console.log(userHospitalRef);
+          const userHospitalRef = ref(db, `users/${user.uid}/hospital`);
           onValue(userHospitalRef, (snapshot) => {
             setCurrentHospital(snapshot.val());
           });
@@ -154,12 +157,12 @@ const Dashboard = () => {
         setCurrentHospital(null);
       }
     });
-  
+
     return () => unsubscribe();
   }, []);
 
   const fetchRegistros = (tipo) => {
-    const tipoRef = ref(database, tipo);
+    const tipoRef = ref(db, tipo);
 
     onValue(tipoRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -176,7 +179,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const tipos = ["pacientes", "medicos", "comodos", "especialidades"];
+    const tipos = ["pacientes", "medicos", "comodos", "especialidades", "hospitais"];
     tipos.forEach(fetchRegistros);
   }, []);
 
@@ -189,11 +192,11 @@ const Dashboard = () => {
 
   const editarRegistro = async (id, tipo, novoNome) => {
     if (!novoNome.trim()) return;
-  
+
     try {
-      const registroRef = ref(database, `${tipo}/${id}`);
+      const registroRef = ref(db, `${tipo}/${id}`);
       await update(registroRef, { nome: novoNome });
-  
+
       setDados((prev) => ({
         ...prev,
         [tipo]: prev[tipo].map((item) => (item.id === id ? { ...item, nome: novoNome } : item)),
@@ -202,11 +205,11 @@ const Dashboard = () => {
       console.error(`Erro ao editar ${tipo}`, error);
     }
   };
-  
+
 
   const excluirRegistro = async (id, tipo) => {
     try {
-      const registroRef = ref(database, `${tipo}/${id}`);
+      const registroRef = ref(db, `${tipo}/${id}`);
       await remove(registroRef);
 
       setDados((prev) => ({
@@ -219,41 +222,45 @@ const Dashboard = () => {
   };
 
   if (!user) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="min-h-screen bg-gray-100">
+        Carregando...
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar user={user} userRole={userRole} currentHospital={currentHospital}/>
+      <Navbar user={user} userRole={userRole} currentHospital={currentHospital} />
       <div className="flex items-center justify-center bg-black">
         <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Dashboard do {currentHospital || "Hospital"}
-        </h1>
+          <h1 className="text-3xl font-bold mb-8 text-center">
+            Dashboard do {currentHospital || "Hospital"}
+          </h1>
 
-        {/* Seção de Transferências para Supervisores */}
-        {userRole === "supervisor" && (
-          <TransferRequests 
-            currentHospital={currentHospital} 
-            user={user}
-            pacientes={dados.pacientes}
-            hospitais={dados.hospitais.filter(h => h.id !== currentHospital)}
-          />
-        )}
-
-        {/* Seções de Gerenciamento */}
-        {Object.entries(dados).map(([tipo, registros]) => (
-          <div key={tipo} className="mb-12">
-            <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
-            <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
-            <ListaRegistros
-              registros={registros}
-              tipo={tipo}
-              onEditar={editarRegistro}
-              onExcluir={excluirRegistro}
+          {/* Seção de Transferências para Supervisores */}
+          {userRole === "supervisor" && (
+            <TransferRequests
+              currentHospital={currentHospital}
+              user={user}
+              pacientes={dados.pacientes}
+              hospitais={dados.hospitais?.filter(h => h.nome !== currentHospital)}
             />
-          </div>
-        ))}
+          )}
+
+          {/* Seções de Gerenciamento */}
+          {Object.entries(dados).map(([tipo, registros]) => (
+            <div key={tipo} className="mb-12">
+              <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
+              <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
+              <ListaRegistros
+                registros={registros}
+                tipo={tipo}
+                onEditar={editarRegistro}
+                onExcluir={excluirRegistro}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>

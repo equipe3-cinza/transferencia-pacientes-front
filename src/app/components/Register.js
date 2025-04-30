@@ -1,7 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { registerUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { get, ref } from "firebase/database";
+import { db } from "@/lib/firebase";
+
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -11,9 +14,34 @@ export default function Register() {
         role: "medico",
         hospital: "",
     });
+    const [hospitais, setHospitais] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const router = useRouter();
+
+    useEffect(() => {
+        const fetchHospitais = async () => {
+            try {
+                const snapshot = await get(ref(db, "hospitais"));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const lista = Object.entries(data).map(([id, value]) => ({
+                        id,
+                        nome: value.nome
+                    }));
+                    console.log("Hospitais:", lista);
+                    setHospitais(lista);
+                } else {
+                    console.log("Nenhum hospital encontrado");
+                }
+            } catch (err) {
+                console.error("Erro ao buscar hospitais:", err);
+                setError("Erro ao carregar hospitais.");
+            }
+        };
+
+        fetchHospitais();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -108,8 +136,11 @@ export default function Register() {
                             required
                         >
                             <option value="">Selecione um hospital</option>
-                            <option value="Hospital Central">Hospital Central</option>
-                            <option value="Hospital Norte">Hospital Norte</option>
+                            {hospitais?.map((h) => (
+                                <option key={h.id} value={h.nome}>
+                                    {h.nome}
+                                </option>
+                            ))}
                         </select>
                     </div>
 

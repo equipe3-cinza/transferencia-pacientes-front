@@ -1,4 +1,4 @@
-import { auth, database } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, set, get } from "firebase/database";
 
@@ -7,7 +7,7 @@ export const registerUser = async (email, password, userData) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    const userProfileRef = ref(database, `users/${user.uid}`);
+    const userProfileRef = ref(db, `users/${user.uid}`);
     await set(userProfileRef, {
       ...userData,
       email: user.email,
@@ -22,7 +22,7 @@ export const registerUser = async (email, password, userData) => {
 
 export const getUserRole = async (userId) => {
   try {
-    const userRef = ref(database, `users/${userId}/role`);
+    const userRef = ref(db, `users/${userId}/role`);
     const snapshot = await get(userRef);
     
     if (snapshot.exists()) {

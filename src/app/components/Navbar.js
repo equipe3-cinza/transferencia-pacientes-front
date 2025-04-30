@@ -25,7 +25,7 @@ const Navbar = ({ user, userRole, currentHospital }) => {
   return (
     <nav className="sticky top-0 z-50 flex justify-between items-center p-4 bg-gray-800 text-white w-full">
       <div className="text-xl font-bold">
-        {currentHospital || "Hospital"} Dashboard
+        {currentHospital || "Hospital"} - Dashboard
       </div>
       
       <div className="flex items-center space-x-4 relative">
@@ -35,10 +35,11 @@ const Navbar = ({ user, userRole, currentHospital }) => {
         >
           <BellIcon className="h-6 w-6 cursor-pointer"  />
         </button>
-
         {showNotifications && (
           <Notifications 
-            userId={user?.uid} 
+            currentHospital={currentHospital}
+            supervisorId={`supervisor_${user.uid}`}
+            userId={user.uid}
             onClose={toggleNotifications} 
           />
         )}
