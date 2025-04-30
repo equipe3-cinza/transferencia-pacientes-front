@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import Notifications from "@/app/components/Notifications";
 
-const Navbar = ({ user, userRole, currentHospital }) => {
+const Navbar = ({ user, userRole, currentHospital, dataUser, currentHospitalId }) => {
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -27,6 +27,9 @@ const Navbar = ({ user, userRole, currentHospital }) => {
       <div className="text-xl font-bold">
         {currentHospital || "Hospital"} - Dashboard
       </div>
+      <div className="text-xl font-bold">
+        Seja bem-vindo, {dataUser?.nome || "Usuário"} - {dataUser?.role || ""}
+      </div>
       
       <div className="flex items-center space-x-4 relative">
         <button 
@@ -37,6 +40,7 @@ const Navbar = ({ user, userRole, currentHospital }) => {
         </button>
         {showNotifications && (
           <Notifications 
+            currentHospitalId={currentHospitalId}
             currentHospital={currentHospital}
             supervisorId={`supervisor_${user.uid}`}
             userId={user.uid}

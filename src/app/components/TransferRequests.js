@@ -1,37 +1,50 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { ref, push, set, update, onValue } from "firebase/database";
+import { getInfoUser } from "@/Utils/funcUteis";
+import { toast } from "react-toastify";
 
-const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
+const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes, hospitais }) => {
+  const [userData, setUserData] = useState(null);
   const [transferencias, setTransferencias] = useState([]);
   const [novaTransferencia, setNovaTransferencia] = useState({
     pacienteId: "",
-    hospitalDestino: "",
+    hospitalDestinoId: "",
+    hospitalDestinoNome: "",
     motivo: "",
   });
 
   // Carregar transferências pendentes
   useEffect(() => {
-    if (!currentHospital) return;
+    const fetchTransferencias = async () => {
+      try {
+        if (!currentHospitalId) return;
 
-    const transfersRef = ref(db, `transferencias/${currentHospital}`);
-    const unsubscribe = onValue(transfersRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const formattedTransfers = Object.entries(data).map(([id, transfer]) => ({
-        id,
-        ...transfer,
-      }));
-      setTransferencias(formattedTransfers);
-    });
+        const transfersRef = ref(db, `transferencias/hospital_${currentHospitalId}`);
+        const unsubscribe = onValue(transfersRef, (snapshot) => {
+          const data = snapshot.val() || {};
+          console.log(data);
+          const formattedTransfers = Object.entries(data).map(([id, transfer]) => ({
+            id,
+            ...transfer,
+          }));
+          setTransferencias(formattedTransfers);
+        });
 
-    return () => unsubscribe();
-  }, [currentHospital]);
+        return () => unsubscribe();
+      } catch (error) {
+        toast.error("Erro ao carregar transferências:", error);
+      }
+    }
+
+    fetchTransferencias();
+  }, [currentHospitalId]);
 
   const handleSolicitarTransferencia = async (e) => {
     e.preventDefault();
-    
-    const { pacienteId, hospitalDestino, motivo } = novaTransferencia;
-    if (!pacienteId || !hospitalDestino || !motivo) return;
+
+    const { pacienteId, hospitalDestinoId, hospitalDestinoNome, motivo } = novaTransferencia;
+    if (!pacienteId || !hospitalDestinoId || !hospitalDestinoNome || !motivo) return;
 
     const paciente = pacientes.find(p => p.id === pacienteId);
     if (!paciente) return;
@@ -42,7 +55,8 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
         nome: paciente.nome,
       },
       hospitalOrigem: currentHospital,
-      hospitalDestino,
+      hospitalDestinoId,
+      hospitalDestinoNome,
       motivo,
       status: "pendente",
       solicitadoPor: user.uid,
@@ -51,7 +65,7 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
 
     try {
       // Criar solicitação no hospital de destino
-      const transferRef = ref(db, `transferencias/${hospitalDestino}`);
+      const transferRef = ref(db, `transferencias/hospital_${hospitalDestinoId}`);
       const newTransferRef = push(transferRef);
       await set(newTransferRef, transferData);
 
@@ -64,61 +78,75 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
         read: false,
       };
 
-      const notificationRef = ref(db, `notifications/supervisor_${hospitalDestino}`);
+      const notificationRef = ref(db, `notifications/supervisor_${hospitalDestinoId}`);
       await push(notificationRef, notification);
 
       // Limpar formulário
       setNovaTransferencia({
         pacienteId: "",
-        hospitalDestino: "",
+        hospitalDestinoId: "",
+        hospitalDestinoNome: "",
         motivo: "",
       });
 
-      alert("Solicitação de transferência enviada com sucesso!");
+      toast.success("Solicitação de transferência enviada com sucesso!");
     } catch (error) {
-      console.error("Erro ao solicitar transferência:", error);
-      alert("Erro ao solicitar transferência");
+      toast.error("Erro ao solicitar transferência:", error);
+      toast.error("Erro ao solicitar transferência");
     }
   };
 
-  const handleResponderTransferencia = async (transferId, status, justificativa) => {
+  const handleResponderTransferencia = async (transfer, status, justificativa) => {
     try {
+
+      const userData = await getInfoUser(user.uid);
+      setUserData(userData);
+
+      if (!userData) return;
       // Atualizar status da transferência
-      const transferRef = ref(db, `transferencias/${currentHospital}/${transferId}`);
+      const transferRef = ref(db, `transferencias/hospital_${currentHospitalId}/${transfer.id}`);
       await update(transferRef, {
         status,
         justificativa,
-        respondidoPor: user.uid,
+        respondidoPor: user?.uid,
+        nomeResponsavel: userData?.nome,
+        cargoResponsavel: userData?.role,
         respondidoEm: new Date().toISOString(),
       });
 
       // Se aprovada, atualizar prontuário do paciente
       if (status === "aprovada") {
-        const transfer = transferencias.find(t => t.id === transferId);
-        
+        const transferencia = transferencias.find(t => t.id === transfer.id);
+
         // Registrar saída no hospital de origem
         const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
         await push(prontuarioSaidaRef, {
           tipo: "transferencia_saida",
           hospitalOrigem: currentHospital,
-          hospitalDestino: transfer.hospitalDestino,
+          hospitalDestinoId: transferencia.hospitalDestinoId,
+          hospitalDestinoNome: transferencia.hospitalDestinoNome,
           data: new Date().toISOString(),
           responsavel: user.uid,
+          nomeResponsavel: userData?.nome,
+          cargoResponsavel: userData?.role,
         });
 
         // Registrar entrada no hospital de destino
-        const prontuarioEntradaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
+        const prontuarioEntradaRef = ref(db, `prontuarios/${transferencia.paciente.id}/eventos`);
         await push(prontuarioEntradaRef, {
           tipo: "transferencia_entrada",
           hospitalOrigem: currentHospital,
-          hospitalDestino: transfer.hospitalDestino,
+          hospitalDestinoId: transferencia.hospitalDestinoId,
+          hospitalDestinoNome: transferencia.hospitalDestinoNome,
           data: new Date().toISOString(),
           responsavel: user.uid,
+          nomeResponsavel: userData?.nome,
+          cargoResponsavel: userData?.role,
         });
 
         // Atualizar hospital atual do paciente
-        const pacienteRef = ref(db, `pacientes/${transfer.paciente.id}/hospital`);
-        await set(pacienteRef, transfer.hospitalDestino);
+        const pacienteRef = ref(db, `pacientes/${transferencia.paciente.id}/hospital`);
+        await set(pacienteRef, transferencia.hospitalDestinoId);
       }
 
       // Notificar o solicitante
@@ -131,16 +159,16 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
 
       const notificationRef = ref(db, `notifications/${transfer.solicitadoPor}`);
       await push(notificationRef, notification);
-
+      toast.success(`Transferência ${status} enviada com sucesso!`);
     } catch (error) {
-      console.error("Erro ao responder transferência:", error);
+      toast.error("Erro ao responder transferência:", error);
     }
   };
 
   return (
     <div className="mb-12 ">
       <h2 className="text-2xl font-semibold mb-4">Solicitações de Transferência</h2>
-      
+
       {/* Formulário para nova transferência */}
       <div className="bg-gray-800 p-4 rounded-lg mb-6">
         <h3 className="text-lg font-semibold mb-2">Solicitar Nova Transferência</h3>
@@ -149,7 +177,7 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
             <label className="block mb-1">Paciente:</label>
             <select
               value={novaTransferencia.pacienteId}
-              onChange={(e) => setNovaTransferencia({...novaTransferencia, pacienteId: e.target.value})}
+              onChange={(e) => setNovaTransferencia({ ...novaTransferencia, pacienteId: e.target.value })}
               className="border rounded px-3 py-2 w-full bg-gray-900"
               required
             >
@@ -159,12 +187,19 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block mb-1">Hospital de Destino:</label>
             <select
-              value={novaTransferencia.hospitalDestino}
-              onChange={(e) => setNovaTransferencia({...novaTransferencia, hospitalDestino: e.target.value})}
+              value={novaTransferencia.hospitalDestinoId}
+              onChange={(e) => {
+                const hospitalSelecionado = hospitais.find(h => h.id === e.target.value);
+                setNovaTransferencia({
+                  ...novaTransferencia,
+                  hospitalDestinoId: hospitalSelecionado?.id || "",
+                  hospitalDestinoNome: hospitalSelecionado?.nome || "",
+                });
+              }}
               className="border rounded px-3 py-2 w-full bg-gray-900"
               required
             >
@@ -174,18 +209,18 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block mb-1">Motivo:</label>
             <textarea
               value={novaTransferencia.motivo}
-              onChange={(e) => setNovaTransferencia({...novaTransferencia, motivo: e.target.value})}
+              onChange={(e) => setNovaTransferencia({ ...novaTransferencia, motivo: e.target.value })}
               className="border rounded px-3 py-2 w-full bg-gray-900"
               rows="3"
               required
             />
           </div>
-          
+
           <button
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 cursor-pointer"
@@ -194,32 +229,30 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
           </button>
         </form>
       </div>
-      
+
       {/* Lista de transferências pendentes */}
       <div className="bg-gray-50 p-4 rounded-lg bg-gray-800">
         <h3 className="text-lg font-semibold mb-2">Transferências Pendentes</h3>
-        {transferencias.length === 0 ? (
+        {transferencias.length === 0  ? (
           <p>Nenhuma transferência pendente</p>
         ) : (
           <ul className="space-y-4">
             {transferencias.map(transfer => (
               <li key={transfer.id} className="border p-4 rounded-lg">
-                <div className="flex justify-between">
-                  <div>
+                {transfer.status === "pendente" && transfer.hospitalDestinoId === currentHospitalId && (
+                  <div className="space-y-2">
                     <p><strong>Paciente:</strong> {transfer.paciente.nome}</p>
                     <p><strong>Hospital de Origem:</strong> {transfer.hospitalOrigem}</p>
-                    <p><strong>Hospital de Destino:</strong> {transfer.hospitalDestino}</p>
+                    <p><strong>Hospital de Destino:</strong> {transfer.hospitalDestinoNome}</p>
                     <p><strong>Motivo:</strong> {transfer.motivo}</p>
                     <p><strong>Status:</strong> {transfer.status}</p>
-                  </div>
-                  
-                  {transfer.status === "pendente" && transfer.hospitalDestino === currentHospital && (
-                    <div className="space-x-2">
+
+                    <div className="pt-4 flex gap-2">
                       <button
                         onClick={() => {
                           const justificativa = prompt("Digite a justificativa para aprovação:");
                           if (justificativa) {
-                            handleResponderTransferencia(transfer.id, "aprovada", justificativa);
+                            handleResponderTransferencia(transfer, "aprovada", justificativa);
                           }
                         }}
                         className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 cursor-pointer"
@@ -230,19 +263,20 @@ const TransferRequests = ({ currentHospital, user, pacientes, hospitais }) => {
                         onClick={() => {
                           const justificativa = prompt("Digite a justificativa para negação:");
                           if (justificativa) {
-                            handleResponderTransferencia(transfer.id, "negada", justificativa);
+                            handleResponderTransferencia(transfer, "negada", justificativa);
                           }
                         }}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 cursor-pointer"
+                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 cursor-pointer"
                       >
                         Negar
                       </button>
                     </div>
+                  </div>
                   )}
-                </div>
               </li>
             ))}
           </ul>
+
         )}
       </div>
     </div>

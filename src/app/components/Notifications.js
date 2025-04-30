@@ -1,58 +1,54 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { ref, onValue, update, set, get } from "firebase/database";
+import { ref, onValue, update, set } from "firebase/database";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-toastify";
 
-const Notifications = ({ currentHospital, supervisorId, userId, onClose }) => {
+const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userId, onClose }) => {
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
+        if (!currentHospital || !supervisorId || !userId) return;
+      
         const fetchNotifications = async () => {
-            console.log(currentHospital, supervisorId);
-            if (!currentHospital || !supervisorId) return;
 
-            const hospitalId = await getHospitalId(currentHospital);
-            if (!hospitalId) return;
-
-            const notificationsRef = ref(db, `notifications/supervisor_${hospitalId}`);
-
-            const unsubscribe = onValue(notificationsRef, (snapshot) => {
-                const data = snapshot.val() || {};
-                const formattedNotifications = Object.entries(data)
-                    .map(([id, notification]) => ({
-                        id,
-                        ...notification,
-                    }))
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                setNotifications(formattedNotifications);
+          if (!currentHospitalId || !userId) return;
+      
+          const sources = [
+            { path: `notifications/supervisor_${currentHospitalId}`, key: "supervisor" },
+            { path: `notifications/${userId}`, key: "user" },
+          ];
+      
+          const unsubscribes = sources.map(({ path, key }) => {
+            const refSource = ref(db, path);
+            return onValue(refSource, (snap) => {
+              const data = snap.val() || {};
+              const items = Object.entries(data).map(([id, n]) => ({
+                id,
+                ...n,
+                source: key,
+              }));
+              setNotifications((prev) => {
+                const filtered = prev.filter((n) => n.source !== key);
+                return [...filtered, ...items].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+              });
             });
-
-            return () => unsubscribe();
+          });
+      
+          return () => unsubscribes.forEach((unsub) => unsub());
         };
-
+      
         fetchNotifications();
-    }, [currentHospital, supervisorId]);
-
-    
-    const getHospitalId = async (nameHospital) => {
-        const snapshot = await get(ref(db, "hospitais"));
-        if (snapshot?.exists()) {
-            const data = snapshot.val();
-            const id = Object.entries(data).find(([_, value]) => value.nome === nameHospital)?.[0];
-            return id;
-        }
-        return null;
-    };
+      }, [currentHospital, supervisorId, userId, currentHospitalId]);
+      
     
 
     const markAsRead = async (notificationId) => {
         try {
-            const hospitalId = await getHospitalId(currentHospital);
-            if (!hospitalId) return;
+            if (!currentHospitalId) return;
     
-            const notificationRef = ref(db, `notifications/supervisor_${hospitalId}/${notificationId}`);
+            const notificationRef = ref(db, `notifications/supervisor_${currentHospitalId}/${notificationId}`);
             await update(notificationRef, { read: true });
         } catch (error) {
             console.error("Erro ao marcar notificação como lida:", error);
@@ -66,12 +62,12 @@ const Notifications = ({ currentHospital, supervisorId, userId, onClose }) => {
 
     const clearAllNotifications = async () => {
         try {
-            const notificationsRef = ref(db, `notifications/${userId}`);
-            await set(notificationsRef, null);
-        } catch (error) {
-            console.error("Erro ao limpar notificações:", error);
+          await set(ref(db, `notifications/${userId}`), null);
+          setNotifications((prev) => prev.filter((n) => n.source !== "user"));
+        } catch (err) {
+          toast.error("Erro ao limpar notificações:", err);
         }
-    };
+      };
 
     return (
         <AnimatePresence>

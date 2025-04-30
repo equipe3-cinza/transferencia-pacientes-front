@@ -29,7 +29,6 @@ export default function Register() {
                         id,
                         nome: value.nome
                     }));
-                    console.log("Hospitais:", lista);
                     setHospitais(lista);
                 } else {
                     console.log("Nenhum hospital encontrado");

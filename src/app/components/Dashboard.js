@@ -6,6 +6,8 @@ import { getUserRole } from "@/lib/auth";
 import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
 import TransferRequests from "@/app/components/TransferRequests";
+import { get } from "http";
+import { getHospitalId, getInfoUser } from "@/Utils/funcUteis";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
@@ -122,6 +124,8 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
 
 // Componente principal
 const Dashboard = () => {
+  const [hospitalId, setHospitalId] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [currentHospital, setCurrentHospital] = useState(null);
@@ -135,17 +139,24 @@ const Dashboard = () => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+  
       if (user) {
         setUser(user);
         try {
           const role = await getUserRole(user.uid);
           setUserRole(role);
 
+          const userData = await getInfoUser(user.uid);
+          setUserData(userData);
+          
           // Carregar hospital do usuário
           const userHospitalRef = ref(db, `users/${user.uid}/hospital`);
-          onValue(userHospitalRef, (snapshot) => {
+          onValue(userHospitalRef, async (snapshot) => {
+            const userHospitalId = await getHospitalId(snapshot.val());
+            setHospitalId(userHospitalId);
             setCurrentHospital(snapshot.val());
           });
+          
         } catch (error) {
           console.error("Erro ao carregar dados do usuário:", error);
           setUserRole(null);
@@ -160,6 +171,7 @@ const Dashboard = () => {
 
     return () => unsubscribe();
   }, []);
+
 
   const fetchRegistros = (tipo) => {
     const tipoRef = ref(db, tipo);
@@ -231,7 +243,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar user={user} userRole={userRole} currentHospital={currentHospital} />
+      <Navbar user={user} userRole={userRole} currentHospitalId={hospitalId} currentHospital={currentHospital} dataUser={userData} />
       <div className="flex items-center justify-center bg-black">
         <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
           <h1 className="text-3xl font-bold mb-8 text-center">
@@ -241,6 +253,7 @@ const Dashboard = () => {
           {/* Seção de Transferências para Supervisores */}
           {userRole === "supervisor" && (
             <TransferRequests
+            currentHospitalId={hospitalId}
               currentHospital={currentHospital}
               user={user}
               pacientes={dados.pacientes}
