@@ -4,6 +4,7 @@ import { registerUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { get, ref } from "firebase/database";
 import { db } from "@/lib/firebase";
+import { toast } from "react-toastify";
 
 
 export default function Register() {
@@ -31,9 +32,10 @@ export default function Register() {
                     }));
                     setHospitais(lista);
                 } else {
-                    console.log("Nenhum hospital encontrado");
+                    toast.error("Nenhum hospital encontrado");
                 }
             } catch (err) {
+                toast.error("Erro ao carregar hospitais.");
                 console.error("Erro ao buscar hospitais:", err);
                 setError("Erro ao carregar hospitais.");
             }

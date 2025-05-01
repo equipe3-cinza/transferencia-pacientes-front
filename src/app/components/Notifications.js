@@ -5,21 +5,20 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 
-const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userId, onClose }) => {
+const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userId, onClose, onUnreadCountChange }) => {
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
         if (!currentHospital || !supervisorId || !userId) return;
-      
+    
         const fetchNotifications = async () => {
-
           if (!currentHospitalId || !userId) return;
-      
+    
           const sources = [
             { path: `notifications/supervisor_${currentHospitalId}`, key: "supervisor" },
-            { path: `notifications/${userId}`, key: "user" },
+            { path: `notifications/resposta_${userId}`, key: "resposta" },
           ];
-      
+    
           const unsubscribes = sources.map(({ path, key }) => {
             const refSource = ref(db, path);
             return onValue(refSource, (snap) => {
@@ -29,41 +28,57 @@ const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userI
                 ...n,
                 source: key,
               }));
+    
               setNotifications((prev) => {
                 const filtered = prev.filter((n) => n.source !== key);
-                return [...filtered, ...items].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const newList = [...filtered, ...items].sort(
+                  (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+                );
+                return newList;
               });
             });
           });
-      
+    
           return () => unsubscribes.forEach((unsub) => unsub());
         };
-      
+    
         fetchNotifications();
       }, [currentHospital, supervisorId, userId, currentHospitalId]);
-      
     
 
-    const markAsRead = async (notificationId) => {
+      useEffect(() => {
+        const unread = notifications.filter((n) => !n.read).length;
+        onUnreadCountChange?.(unread);
+      }, [notifications, onUnreadCountChange]);
+      
+      const markAsRead = async (notificationId, source) => {
         try {
-            if (!currentHospitalId) return;
-    
-            const notificationRef = ref(db, `notifications/supervisor_${currentHospitalId}/${notificationId}`);
-            await update(notificationRef, { read: true });
+          let notificationRef;
+      
+          if (source === "supervisor" && currentHospitalId) {
+            notificationRef = ref(db, `notifications/supervisor_${currentHospitalId}/${notificationId}`);
+          } else if (source === "resposta" && userId) {
+            notificationRef = ref(db, `notifications/resposta_${userId}/${notificationId}`);
+          } else {
+            return; 
+          }
+      
+          await update(notificationRef, { read: true });
         } catch (error) {
-            console.error("Erro ao marcar notificação como lida:", error);
+            toast.error("Erro ao marcar notificação como lida.");
+          console.error("Erro ao marcar notificação como lida:", error);
         }
-    };
+      };
+      
     
-    const handleNotificationClick = (notificationId) => {
-        markAsRead(notificationId);
-        // Aqui você pode adicionar lógica adicional quando uma notificação é clicada
+    const handleNotificationClick = (notificationId, source) => {
+        markAsRead(notificationId, source);
     };
 
     const clearAllNotifications = async () => {
         try {
           await set(ref(db, `notifications/${userId}`), null);
-          setNotifications((prev) => prev.filter((n) => n.source !== "user"));
+          setNotifications((prev) => prev.filter((n) => n.source !== "resposta" && n.source !== "supervisor"));
         } catch (err) {
           toast.error("Erro ao limpar notificações:", err);
         }
@@ -84,7 +99,7 @@ const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userI
                             {notifications.length > 0 && (
                                 <button
                                     onClick={clearAllNotifications}
-                                    className="text-xs text-blue-500 hover:text-blue-700"
+                                    className="text-xs text-blue-500 hover:text-blue-700 cursor-pointer"
                                 >
                                     Limpar todas
                                 </button>
@@ -110,7 +125,7 @@ const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userI
                                     exit={{ opacity: 0 }}
                                     className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${notification.read ? "bg-gray-50" : "bg-white"
                                         }`}
-                                    onClick={() => handleNotificationClick(notification.id)}
+                                    onClick={() => handleNotificationClick(notification.id, notification.source)}
                                 >
                                     <div className="flex justify-between items-start">
                                         <p className={`font-semibold ${notification.read ? "text-gray-600" : "text-gray-900"

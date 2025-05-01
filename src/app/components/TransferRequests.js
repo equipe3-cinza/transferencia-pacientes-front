@@ -23,7 +23,6 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         const transfersRef = ref(db, `transferencias/hospital_${currentHospitalId}`);
         const unsubscribe = onValue(transfersRef, (snapshot) => {
           const data = snapshot.val() || {};
-          console.log(data);
           const formattedTransfers = Object.entries(data).map(([id, transfer]) => ({
             id,
             ...transfer,
@@ -96,70 +95,117 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
     }
   };
 
-  const handleResponderTransferencia = async (transfer, status, justificativa) => {
+  const handleResponderTransferencia = async (transfer, status) => {
     try {
 
-      const userData = await getInfoUser(user.uid);
-      setUserData(userData);
-
-      if (!userData) return;
-      // Atualizar status da transferência
-      const transferRef = ref(db, `transferencias/hospital_${currentHospitalId}/${transfer.id}`);
-      await update(transferRef, {
-        status,
-        justificativa,
-        respondidoPor: user?.uid,
-        nomeResponsavel: userData?.nome,
-        cargoResponsavel: userData?.role,
-        respondidoEm: new Date().toISOString(),
+      const justificativa = await new Promise((resolve, reject) => {
+        let inputValue = "";
+    
+        const toastId = toast.info(
+          ({ closeToast }) => (
+            <div className="text-center">
+              <p className="mb-2 font-semibold">Digite a justificativa:</p>
+              <input
+                type="text"
+                onChange={(e) => (inputValue = e.target.value)}
+                className="border p-2 w-full rounded mb-3"
+                autoFocus
+              />
+              <div className="flex justify-center space-x-2">
+                <button
+                  onClick={() => {
+                    toast.dismiss(toastId);
+                    resolve(inputValue);
+                  }}
+                  className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 cursor-pointer"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={() => {
+                    toast.dismiss(toastId);
+                  }}
+                  className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ),
+          {
+            autoClose: false,
+            closeButton: false,
+            // position: "top-center",
+            draggable: false,
+          }
+        );
       });
 
-      // Se aprovada, atualizar prontuário do paciente
-      if (status === "aprovada") {
-        const transferencia = transferencias.find(t => t.id === transfer.id);
+      if (justificativa) {
+        const userData = await getInfoUser(user.uid);
+        setUserData(userData);
 
-        // Registrar saída no hospital de origem
-        const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
-        await push(prontuarioSaidaRef, {
-          tipo: "transferencia_saida",
-          hospitalOrigem: currentHospital,
-          hospitalDestinoId: transferencia.hospitalDestinoId,
-          hospitalDestinoNome: transferencia.hospitalDestinoNome,
-          data: new Date().toISOString(),
-          responsavel: user.uid,
+        if (!userData) return;
+        // Atualizar status da transferência
+        const transferRef = ref(db, `transferencias/hospital_${currentHospitalId}/${transfer.id}`);
+        await update(transferRef, {
+          status,
+          justificativa,
+          respondidoPor: user?.uid,
           nomeResponsavel: userData?.nome,
           cargoResponsavel: userData?.role,
+          respondidoEm: new Date().toISOString(),
         });
 
-        // Registrar entrada no hospital de destino
-        const prontuarioEntradaRef = ref(db, `prontuarios/${transferencia.paciente.id}/eventos`);
-        await push(prontuarioEntradaRef, {
-          tipo: "transferencia_entrada",
-          hospitalOrigem: currentHospital,
-          hospitalDestinoId: transferencia.hospitalDestinoId,
-          hospitalDestinoNome: transferencia.hospitalDestinoNome,
-          data: new Date().toISOString(),
-          responsavel: user.uid,
-          nomeResponsavel: userData?.nome,
-          cargoResponsavel: userData?.role,
-        });
+        // Se aprovada, atualizar prontuário do paciente
+        if (status === "aprovada") {
+          const transferencia = transferencias.find(t => t.id === transfer.id);
 
-        // Atualizar hospital atual do paciente
-        const pacienteRef = ref(db, `pacientes/${transferencia.paciente.id}/hospital`);
-        await set(pacienteRef, transferencia.hospitalDestinoId);
+          // Registrar saída no hospital de origem
+          const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
+          await push(prontuarioSaidaRef, {
+            tipo: "transferencia_saida",
+            hospitalOrigem: currentHospital,
+            hospitalDestinoId: transferencia.hospitalDestinoId,
+            hospitalDestinoNome: transferencia.hospitalDestinoNome,
+            data: new Date().toISOString(),
+            responsavel: user.uid,
+            nomeResponsavel: userData?.nome,
+            cargoResponsavel: userData?.role,
+          });
+
+          // Registrar entrada no hospital de destino
+          const prontuarioEntradaRef = ref(db, `prontuarios/${transferencia.paciente.id}/eventos`);
+          await push(prontuarioEntradaRef, {
+            tipo: "transferencia_entrada",
+            hospitalOrigem: currentHospital,
+            hospitalDestinoId: transferencia.hospitalDestinoId,
+            hospitalDestinoNome: transferencia.hospitalDestinoNome,
+            data: new Date().toISOString(),
+            responsavel: user.uid,
+            nomeResponsavel: userData?.nome,
+            cargoResponsavel: userData?.role,
+          });
+
+          // Atualizar hospital atual do paciente
+          const pacienteRef = ref(db, `pacientes/${transferencia.paciente.id}/hospital`);
+          await set(pacienteRef, transferencia.hospitalDestinoId);
+        }
+
+        // Notificar o solicitante
+        const notification = {
+          title: `Transferência ${status}`,
+          message: `Sua solicitação para o paciente ${transfer.paciente.nome} foi ${status}. Justificativa: ${justificativa}`,
+          timestamp: new Date().toISOString(),
+          read: false,
+        };
+
+        const notificationRef = ref(db, `notifications/resposta_${transfer.solicitadoPor}`);
+        await push(notificationRef, notification);
+        toast.success(`Transferência ${status} enviada com sucesso!`);
       }
 
-      // Notificar o solicitante
-      const notification = {
-        title: `Transferência ${status}`,
-        message: `Sua solicitação para o paciente ${transfer.paciente.nome} foi ${status}. Justificativa: ${justificativa}`,
-        timestamp: new Date().toISOString(),
-        read: false,
-      };
 
-      const notificationRef = ref(db, `notifications/${transfer.solicitadoPor}`);
-      await push(notificationRef, notification);
-      toast.success(`Transferência ${status} enviada com sucesso!`);
     } catch (error) {
       toast.error("Erro ao responder transferência:", error);
     }
@@ -233,7 +279,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       {/* Lista de transferências pendentes */}
       <div className="bg-gray-50 p-4 rounded-lg bg-gray-800">
         <h3 className="text-lg font-semibold mb-2">Transferências Pendentes</h3>
-        {transferencias.length === 0  ? (
+        {transferencias.length === 0 || transferencias.every(transfer => transfer.status !== "pendente") ? (
           <p>Nenhuma transferência pendente</p>
         ) : (
           <ul className="space-y-4">
@@ -250,10 +296,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                     <div className="pt-4 flex gap-2">
                       <button
                         onClick={() => {
-                          const justificativa = prompt("Digite a justificativa para aprovação:");
-                          if (justificativa) {
-                            handleResponderTransferencia(transfer, "aprovada", justificativa);
-                          }
+                          handleResponderTransferencia(transfer, "aprovada");
+                   
                         }}
                         className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 cursor-pointer"
                       >
@@ -261,10 +305,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                       </button>
                       <button
                         onClick={() => {
-                          const justificativa = prompt("Digite a justificativa para negação:");
-                          if (justificativa) {
-                            handleResponderTransferencia(transfer, "negada", justificativa);
-                          }
+                          handleResponderTransferencia(transfer, "negada");
+          
                         }}
                         className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 cursor-pointer"
                       >
@@ -272,7 +314,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                       </button>
                     </div>
                   </div>
-                  )}
+                )}
               </li>
             ))}
           </ul>

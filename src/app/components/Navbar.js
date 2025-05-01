@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import Notifications from "@/app/components/Notifications";
 
-const Navbar = ({ user, userRole, currentHospital, dataUser, currentHospitalId }) => {
+const Navbar = ({ user, currentHospital, dataUser, currentHospitalId }) => {
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -30,21 +31,27 @@ const Navbar = ({ user, userRole, currentHospital, dataUser, currentHospitalId }
       <div className="text-xl font-bold">
         Seja bem-vindo, {dataUser?.nome || "Usuário"} - {dataUser?.role || ""}
       </div>
-      
+
       <div className="flex items-center space-x-4 relative">
-        <button 
-          onClick={toggleNotifications} 
+        <button
+          onClick={toggleNotifications}
           className="relative p-2 hover:bg-gray-700 rounded-full"
         >
-          <BellIcon className="h-6 w-6 cursor-pointer"  />
+          <BellIcon className="h-6 w-6 cursor-pointer" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+              {unreadCount}
+            </span>
+          )}
         </button>
         {showNotifications && (
-          <Notifications 
+          <Notifications
             currentHospitalId={currentHospitalId}
             currentHospital={currentHospital}
-            supervisorId={`supervisor_${user.uid}`}
-            userId={user.uid}
-            onClose={toggleNotifications} 
+            supervisorId={`supervisor_${user?.uid}`}
+            userId={user?.uid}
+            onClose={toggleNotifications}
+            onUnreadCountChange={setUnreadCount}
           />
         )}
 
