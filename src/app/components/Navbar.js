@@ -29,7 +29,7 @@ const Navbar = ({ user, currentHospital, dataUser, currentHospitalId }) => {
         {currentHospital || "Hospital"} - Dashboard
       </div>
       <div className="text-xl font-bold">
-        Seja bem-vindo, {dataUser?.nome || "Usuário"} - {dataUser?.role || ""}
+        Seja bem-vindo! {dataUser?.nome ?? "Usuário"} - {dataUser?.role ?? ""}
       </div>
 
       <div className="flex items-center space-x-4 relative">

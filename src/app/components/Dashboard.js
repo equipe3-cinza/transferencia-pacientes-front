@@ -139,7 +139,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-  
+
       if (user) {
         setUser(user);
         try {
@@ -148,7 +148,7 @@ const Dashboard = () => {
 
           const userData = await getInfoUser(user.uid);
           setUserData(userData);
-          
+
           // Carregar hospital do usuário
           const userHospitalRef = ref(db, `users/${user.uid}/hospital`);
           onValue(userHospitalRef, async (snapshot) => {
@@ -156,7 +156,7 @@ const Dashboard = () => {
             setHospitalId(userHospitalId);
             setCurrentHospital(snapshot.val());
           });
-          
+
         } catch (error) {
           console.error("Erro ao carregar dados do usuário:", error);
           setUserRole(null);
@@ -253,7 +253,7 @@ const Dashboard = () => {
           {/* Seção de Transferências para Supervisores */}
           {userRole === "supervisor" && (
             <TransferRequests
-            currentHospitalId={hospitalId}
+              currentHospitalId={hospitalId}
               currentHospital={currentHospital}
               user={user}
               pacientes={dados.pacientes}
@@ -261,19 +261,24 @@ const Dashboard = () => {
             />
           )}
 
-          {/* Seções de Gerenciamento */}
-          {Object.entries(dados).map(([tipo, registros]) => (
-            <div key={tipo} className="mb-12">
-              <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
-              <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
-              <ListaRegistros
-                registros={registros}
-                tipo={tipo}
-                onEditar={editarRegistro}
-                onExcluir={excluirRegistro}
-              />
-            </div>
-          ))}
+          {userRole === "administrador" && (
+            <>
+              {Object.entries(dados).map(([tipo, registros]) => (
+                <div key={tipo} className="mb-12">
+                  <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
+                  <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
+                  <ListaRegistros
+                    registros={registros}
+                    tipo={tipo}
+                    onEditar={editarRegistro}
+                    onExcluir={excluirRegistro}
+                  />
+                </div>
+              ))}
+
+            </>
+          )}
+
         </div>
       </div>
     </div>

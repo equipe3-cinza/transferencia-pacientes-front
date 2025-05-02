@@ -123,7 +123,7 @@ const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userI
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    className={`p-3 border-b cursor-pointer hover:bg-gray-50 ${notification.read ? "bg-gray-50" : "bg-white"
+                                    className={`p-3 border-b cursor-pointer hover:bg-gray-100 ${notification.read ? "bg-gray-50" : "bg-white"
                                         }`}
                                     onClick={() => handleNotificationClick(notification.id, notification.source)}
                                 >
