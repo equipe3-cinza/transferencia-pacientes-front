@@ -75,6 +75,12 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       return;
     }
 
+    // Verificar se o hospital de destino é diferente do hospital atual
+    if (hospitalDestinoId === currentHospitalId) {
+      toast.error("O hospital de destino deve ser diferente do hospital atual");
+      return;
+    }
+
     const paciente = pacientes.find(p => p.id === pacienteId);
     if (!paciente) return;
 
@@ -90,6 +96,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         nome: paciente.nome,
       },
       hospitalOrigem: currentHospital,
+      hospitalOrigemId: currentHospitalId,
       hospitalDestinoId,
       hospitalDestinoNome,
       comodoId,
@@ -203,17 +210,16 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
         // Se aprovada, atualizar prontuário do paciente
         if (status === "aprovada") {
-          const transferencia = transferencias.find(t => t.id === transfer.id);
-
           // Registrar saída no hospital de origem
           const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
           const novoEventoSaida = {
             tipo: "transferencia_saida",
-            hospitalOrigem: currentHospital,
-            hospitalDestinoId: transferencia.hospitalDestinoId,
-            hospitalDestinoNome: transferencia.hospitalDestinoNome,
-            comodoId: transferencia.comodoId,
-            comodoNome: transferencia.comodoNome,
+            hospitalOrigem: transfer.hospitalOrigem,
+            hospitalOrigemId: transfer.hospitalOrigemId,
+            hospitalDestinoId: transfer.hospitalDestinoId,
+            hospitalDestinoNome: transfer.hospitalDestinoNome,
+            comodoId: transfer.comodoId,
+            comodoNome: transfer.comodoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
@@ -225,11 +231,12 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
           const prontuarioEntradaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
           const novoEventoEntrada = {
             tipo: "transferencia_entrada",
-            hospitalOrigem: currentHospital,
-            hospitalDestinoId: transferencia.hospitalDestinoId,
-            hospitalDestinoNome: transferencia.hospitalDestinoNome,
-            comodoId: transferencia.comodoId,
-            comodoNome: transferencia.comodoNome,
+            hospitalOrigem: transfer.hospitalOrigem,
+            hospitalOrigemId: transfer.hospitalOrigemId,
+            hospitalDestinoId: transfer.hospitalDestinoId,
+            hospitalDestinoNome: transfer.hospitalDestinoNome,
+            comodoId: transfer.comodoId,
+            comodoNome: transfer.comodoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
@@ -239,7 +246,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
           // Atualizar hospital atual do paciente
           const pacienteRef = ref(db, `pacientes/${transfer.paciente.id}/hospital`);
-          await set(pacienteRef, transferencia.hospitalDestinoId);
+          await set(pacienteRef, transfer.hospitalDestinoId);
         }
 
         // Notificar o solicitante
@@ -316,7 +323,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                 required
               >
                 <option value="">Selecione um hospital</option>
-                {hospitais?.map(hospital => (
+                {hospitais?.filter(h => h.id !== currentHospitalId).map(hospital => (
                   <option key={hospital.id} value={hospital.id}>{hospital.nome}</option>
                 ))}
               </select>
