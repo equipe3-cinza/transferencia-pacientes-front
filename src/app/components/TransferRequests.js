@@ -101,6 +101,16 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
     };
 
     try {
+      // Mostrar spinner de carregamento
+      Swal.fire({
+        title: 'Processando...',
+        html: 'Enviando solicitação de transferência',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       // Criar solicitação no hospital de destino
       const transferRef = ref(db, `transferencias/hospital_${hospitalDestinoId}`);
       const newTransferRef = push(transferRef);
@@ -127,8 +137,14 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         motivo: "",
       });
 
-      toast.success("Solicitação de transferência enviada com sucesso!");
+      // Fechar spinner e mostrar mensagem de sucesso
+      Swal.close();
+      toast.success("Solicitação de transferência enviada com sucesso!", {
+        autoClose: 1000
+      });
     } catch (error) {
+      // Fechar spinner e mostrar erro
+      Swal.close();
       toast.error("Erro ao solicitar transferência:", error);
       toast.error("Erro ao solicitar transferência");
     }
@@ -152,6 +168,16 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       });
 
       if (justificativa) {
+        // Mostrar spinner de carregamento
+        Swal.fire({
+          title: 'Processando...',
+          html: 'Atualizando status da transferência',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
         const userInfo = await getInfoUser(user.uid);
 
         if (!userInfo) return;
@@ -181,7 +207,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
           // Registrar saída no hospital de origem
           const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
-          await push(prontuarioSaidaRef, {
+          const novoEventoSaida = {
             tipo: "transferencia_saida",
             hospitalOrigem: currentHospital,
             hospitalDestinoId: transferencia.hospitalDestinoId,
@@ -192,11 +218,12 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
             cargoResponsavel: userInfo?.role,
-          });
+          };
+          await push(prontuarioSaidaRef, novoEventoSaida);
 
           // Registrar entrada no hospital de destino
-          const prontuarioEntradaRef = ref(db, `prontuarios/${transferencia.paciente.id}/eventos`);
-          await push(prontuarioEntradaRef, {
+          const prontuarioEntradaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
+          const novoEventoEntrada = {
             tipo: "transferencia_entrada",
             hospitalOrigem: currentHospital,
             hospitalDestinoId: transferencia.hospitalDestinoId,
@@ -207,10 +234,11 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
             cargoResponsavel: userInfo?.role,
-          });
+          };
+          await push(prontuarioEntradaRef, novoEventoEntrada);
 
           // Atualizar hospital atual do paciente
-          const pacienteRef = ref(db, `pacientes/${transferencia.paciente.id}/hospital`);
+          const pacienteRef = ref(db, `pacientes/${transfer.paciente.id}/hospital`);
           await set(pacienteRef, transferencia.hospitalDestinoId);
         }
 
@@ -225,6 +253,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         const notificationRef = ref(db, `notifications/resposta_${transfer.solicitadoPor}`);
         await push(notificationRef, notification);
         
+        // Fechar spinner e mostrar mensagem de sucesso
+        Swal.close();
         Swal.fire({
           title: 'Sucesso!',
           text: `Transferência ${status} enviada com sucesso!`,
@@ -234,6 +264,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       }
 
     } catch {
+      // Fechar spinner e mostrar erro
+      Swal.close();
       Swal.fire({
         title: 'Erro!',
         text: 'Erro ao responder transferência',
