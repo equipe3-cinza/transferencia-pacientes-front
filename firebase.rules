@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "hospitais": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'administrador'"
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'administrador')"
+      }
+    },
+    "transferencias": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+} 

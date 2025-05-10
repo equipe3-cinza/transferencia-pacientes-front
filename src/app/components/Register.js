@@ -32,11 +32,16 @@ export default function Register() {
                     }));
                     setHospitais(lista);
                 } else {
-                    toast.error("Nenhum hospital encontrado");
+                    setHospitais([]);
+                    toast.warning("Nenhum hospital cadastrado no sistema.");
                 }
             } catch (err) {
-                toast.error("Erro ao carregar hospitais.");
                 console.error("Erro ao buscar hospitais:", err);
+                if (err.code === 'PERMISSION_DENIED') {
+                    toast.error("Erro de permissão. Verifique se você está autenticado.");
+                } else {
+                    toast.error("Erro ao carregar hospitais. Tente novamente mais tarde.");
+                }
                 setError("Erro ao carregar hospitais.");
             }
         };
@@ -49,24 +54,33 @@ export default function Register() {
         setLoading(true);
         setError("");
 
-        if (formData.role !== "administrador" && !formData.hospital) {
-            setError("Selecione um hospital");
-            setLoading(false);
-            return;
-        }
+        try {
+            if (formData.role !== "administrador" && !formData.hospital) {
+                setError("Selecione um hospital");
+                setLoading(false);
+                return;
+            }
 
-        const { email, password, nome, role, hospital } = formData;
+            const { email, password, nome, role, hospital } = formData;
 
-        const result = await registerUser(email, password, {
-            nome,
-            role,
-            hospital: role === "administrador" ? "todos" : hospital,
-        });
+            const result = await registerUser(email, password, {
+                nome,
+                role,
+                hospital: role === "administrador" ? "todos" : hospital,
+            });
 
-        if (result.success) {
-            router.push("/dashboard");
-        } else {
-            setError(result.error);
+            if (result.success) {
+                toast.success("Cadastro realizado com sucesso!");
+                router.push("/dashboard");
+            } else {
+                setError(result.error);
+                toast.error(result.error);
+            }
+        } catch (err) {
+            console.error("Erro no cadastro:", err);
+            setError("Erro ao realizar cadastro. Tente novamente.");
+            toast.error("Erro ao realizar cadastro. Tente novamente.");
+        } finally {
             setLoading(false);
         }
     };
