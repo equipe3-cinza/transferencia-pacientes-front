@@ -1,3 +1,31 @@
+# UNIVERSIDADE FEDERAL DE GOIÁS - UFG
+
+# INSTITUTO DE INFORMÁTICA
+
+## ESPECIALIZAÇÃO EM DESENVOLVIMENTO WEB E MOBILE – FULL STACK
+
+## Programação Front-End Avançada
+
+### Prof. Daniel Ferreira Monteiro Alves
+
+## **Equipe Cinza**
+
+- Alan Brilhante Coutinho
+- Arthur Vieira Guimarães
+- Caio Alexandre Oliveira Alves
+- Fabricio da Silva Pires
+- Lucas Araujo Ribeiro
+- Wilglison Rilniky Oliveira dos Santos
+
+## Tecnologias Utilizadas
+Frontend:
+- Next.js
+- SweetAlert2
+Backend:
+- Firebase Authentication
+- Firebase Realtime Database
+- Socket.IO para comunicação em tempo real
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
