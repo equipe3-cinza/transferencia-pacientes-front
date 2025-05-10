@@ -122,8 +122,18 @@ const FormularioAdicionar = ({ tipo }) => {
 const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
   const [editandoId, setEditandoId] = useState(null);
   const [novoNome, setNovoNome] = useState("");
+  const [hospitais, setHospitais] = useState({});
 
-
+  useEffect(() => {
+    if (tipo === "comodos") {
+      const hospitaisRef = ref(db, "hospitais");
+      const unsubscribe = onValue(hospitaisRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        setHospitais(data);
+      });
+      return () => unsubscribe();
+    }
+  }, [tipo]);
 
   const handleSalvar = () => {
     if (novoNome.trim() && editandoId) {
@@ -142,24 +152,40 @@ const ListaRegistros = ({ registros, tipo, onEditar, onExcluir }) => {
             key={registro.id}
             className="flex items-center justify-between bg-gray-900 p-4 rounded shadow-sm border"
           >
-            {editandoId === registro.id ? (
-              <input
-                type="text"
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSalvar();
-                  if (e.key === "Escape") {
-                    setEditandoId(null);
-                    setNovoNome("");
-                  }
-                }}
-                autoFocus
-                className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            ) : (
-              <span className="flex-1">{registro.nome}</span>
-            )}
+            <div className="flex-1">
+              {editandoId === registro.id ? (
+                <input
+                  type="text"
+                  value={novoNome}
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSalvar();
+                    if (e.key === "Escape") {
+                      setEditandoId(null);
+                      setNovoNome("");
+                    }
+                  }}
+                  autoFocus
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              ) : (
+                <div>
+                  <span>{registro.nome}</span>
+                  {tipo === "comodos" && (
+                    <>
+                      {registro.hospital && (
+                        <span className="ml-2 text-gray-400">
+                          (Hospital: {hospitais[registro.hospital]?.nome || "Não definido"})
+                        </span>
+                      )}
+                      <span className={`ml-2 ${registro.disponivel ? 'text-green-400' : 'text-red-400'}`}>
+                        {registro.disponivel ? '(Disponível)' : '(Ocupado)'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 ml-4">
               {editandoId === registro.id ? (
                 <button
@@ -349,9 +375,10 @@ const Dashboard = () => {
           {["medico", "enfermeiro", "supervisor", "administrador"].includes(userRole) && (
             <div className="bg-gray-900 rounded-lg p-6 col-span-3">
               <DisponibilidadeComodos
-                currentHospitalId={hospitalId}
+                currentHospitalId={userRole === "administrador" ? "todos" : hospitalId}
                 userRole={userRole}
                 user={user}
+                showAllHospitals={userRole === "administrador"}
               />
             </div>
           )}

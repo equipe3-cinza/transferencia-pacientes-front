@@ -49,7 +49,7 @@ export default function Register() {
         setLoading(true);
         setError("");
 
-        if (!formData.hospital) {
+        if (formData.role !== "administrador" && !formData.hospital) {
             setError("Selecione um hospital");
             setLoading(false);
             return;
@@ -60,7 +60,7 @@ export default function Register() {
         const result = await registerUser(email, password, {
             nome,
             role,
-            hospital,
+            hospital: role === "administrador" ? "todos" : hospital,
         });
 
         if (result.success) {
@@ -134,7 +134,8 @@ export default function Register() {
                             value={formData.hospital}
                             onChange={(e) => setFormData({ ...formData, hospital: e.target.value })}
                             className="w-full p-2 border rounded bg-black text-white border-gray-700 focus:outline-none focus:border-blue-500"
-                            required
+                            required={formData.role !== "administrador"}
+                            disabled={formData.role === "administrador"}
                         >
                             <option value="">Selecione um hospital</option>
                             {hospitais?.map((h) => (
