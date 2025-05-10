@@ -211,6 +211,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         // Se aprovada, atualizar prontuário do paciente
         if (status === "aprovada") {
           // Registrar saída no hospital de origem
+          /*
           const prontuarioSaidaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
           const novoEventoSaida = {
             tipo: "transferencia_saida",
@@ -225,7 +226,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             nomeResponsavel: userInfo?.nome,
             cargoResponsavel: userInfo?.role,
           };
-          await push(prontuarioSaidaRef, novoEventoSaida);
+          await push(prontuarioSaidaRef, novoEventoSaida); */
 
           // Registrar entrada no hospital de destino
           const prontuarioEntradaRef = ref(db, `prontuarios/${transfer.paciente.id}/eventos`);
