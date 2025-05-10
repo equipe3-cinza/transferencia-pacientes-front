@@ -55,21 +55,27 @@ const Prontuarios = ({ currentHospitalId, userRole }) => {
     <div>
       <h2 className="text-xl font-semibold mb-4 text-white">Prontuários</h2>
       
-      {pacientes.length === 0 ? (
-        <p className="text-gray-300">Nenhum paciente encontrado neste hospital.</p>
+      {pacientes
+        .filter((paciente) => {
+          const prontuario = prontuarios.find(p => p.id === paciente.id);
+          return prontuario && prontuario.eventos && Object.keys(prontuario.eventos).length > 0;
+        })
+        .length === 0 ? (
+        <p className="text-gray-300">Nenhum paciente com eventos registrados neste hospital.</p>
       ) : (
         <div className="space-y-4 max-h-[600px] overflow-y-auto">
-          {pacientes.map((paciente) => {
-            const prontuario = prontuarios.find(p => p.id === paciente.id);
-            const eventos = prontuario?.eventos || {};
+          {pacientes
+            .filter((paciente) => {
+              const prontuario = prontuarios.find(p => p.id === paciente.id);
+              return prontuario && prontuario.eventos && Object.keys(prontuario.eventos).length > 0;
+            })
+            .map((paciente) => {
+              const prontuario = prontuarios.find(p => p.id === paciente.id);
+              const eventos = prontuario?.eventos || {};
 
-            return (
-              <div key={paciente.id} className="border border-gray-700 p-4 rounded-lg bg-gray-800">
-                <h3 className="text-lg font-semibold mb-2 text-white">{paciente.nome}</h3>
-                
-                {Object.entries(eventos).length === 0 ? (
-                  <p className="text-gray-300">Nenhum evento registrado no prontuário.</p>
-                ) : (
+              return (
+                <div key={paciente.id} className="border border-gray-700 p-4 rounded-lg bg-gray-800">
+                  <h3 className="text-lg font-semibold mb-2 text-white">{paciente.nome}</h3>
                   <div className="space-y-2">
                     {Object.entries(eventos).map(([eventoId, evento]) => (
                       <div key={eventoId} className="border-l-4 border-blue-500 pl-3">
@@ -83,10 +89,9 @@ const Prontuarios = ({ currentHospitalId, userRole }) => {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
