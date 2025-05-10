@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 import { get, ref } from "firebase/database";
 
 export const getHospitalId = async (nameHospital) => {

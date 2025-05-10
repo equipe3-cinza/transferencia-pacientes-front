@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 import { ref, onValue } from "firebase/database";
 
 const Prontuarios = ({ currentHospitalId, userRole }) => {

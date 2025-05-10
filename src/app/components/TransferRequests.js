@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 import { ref, push, set, update, onValue } from "firebase/database";
 import { getInfoUser } from "@/Utils/funcUteis";
 import { toast } from "react-toastify";

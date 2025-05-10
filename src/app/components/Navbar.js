@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 import { useRouter } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import Notifications from "@/app/components/Notifications";
