@@ -3,6 +3,7 @@ import { db } from "@/lib/firebase.config";
 import { ref, push, set, update, onValue } from "firebase/database";
 import { getInfoUser } from "@/Utils/funcUteis";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes, hospitais }) => {
   const [transferencias, setTransferencias] = useState([]);
@@ -135,46 +136,19 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
   const handleResponderTransferencia = async (transfer, status) => {
     try {
-      const justificativa = await new Promise((resolve) => {
-        let inputValue = "";
-    
-        const toastId = toast.info(
-          () => (
-            <div className="text-center">
-              <p className="mb-2 font-semibold">Digite a justificativa:</p>
-              <input
-                type="text"
-                onChange={(e) => (inputValue = e.target.value)}
-                className="border p-2 w-full rounded mb-3"
-                autoFocus
-              />
-              <div className="flex justify-center space-x-2">
-                <button
-                  onClick={() => {
-                    toast.dismiss(toastId);
-                    resolve(inputValue);
-                  }}
-                  className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 cursor-pointer"
-                >
-                  Confirmar
-                </button>
-                <button
-                  onClick={() => {
-                    toast.dismiss(toastId);
-                  }}
-                  className="bg-gray-300 text-gray-800 px-4 py-1 rounded hover:bg-gray-400 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ),
-          {
-            autoClose: false,
-            closeButton: false,
-            draggable: false,
+      const { value: justificativa } = await Swal.fire({
+        title: 'Digite a justificativa',
+        input: 'text',
+        inputLabel: 'Justificativa',
+        inputPlaceholder: 'Digite a justificativa aqui',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Você precisa digitar uma justificativa!';
           }
-        );
+        }
       });
 
       if (justificativa) {
@@ -250,11 +224,22 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
         const notificationRef = ref(db, `notifications/resposta_${transfer.solicitadoPor}`);
         await push(notificationRef, notification);
-        toast.success(`Transferência ${status} enviada com sucesso!`);
+        
+        Swal.fire({
+          title: 'Sucesso!',
+          text: `Transferência ${status} enviada com sucesso!`,
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
       }
 
-    } catch (error) {
-      toast.error("Erro ao responder transferência:", error);
+    } catch {
+      Swal.fire({
+        title: 'Erro!',
+        text: 'Erro ao responder transferência',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
     }
   };
 
