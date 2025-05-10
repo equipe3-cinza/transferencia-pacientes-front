@@ -5,7 +5,7 @@ export const getHospitalId = async (nameHospital) => {
     const snapshot = await get(ref(db, "hospitais"));
     if (snapshot?.exists()) {
         const data = snapshot.val();
-        const id = Object.entries(data).find(([_, value]) => value.nome === nameHospital)?.[0];
+        const id = Object.entries(data).find(([, value]) => value.nome === nameHospital)?.[0];
         return id;
     }
     return null;

@@ -5,84 +5,82 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 
-const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userId, onClose, onUnreadCountChange }) => {
+const Notifications = ({ currentHospitalId, userId, onClose, onUnreadCountChange }) => {
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
-        if (!currentHospital || !supervisorId || !userId) return;
-    
-        const fetchNotifications = async () => {
-          if (!currentHospitalId || !userId) return;
-    
-          const sources = [
+        if (!currentHospitalId || !userId) return;
+
+        const sources = [
             { path: `notifications/supervisor_${currentHospitalId}`, key: "supervisor" },
             { path: `notifications/resposta_${userId}`, key: "resposta" },
-          ];
-    
-          const unsubscribes = sources.map(({ path, key }) => {
+        ];
+
+        const unsubscribes = sources.map(({ path, key }) => {
             const refSource = ref(db, path);
             return onValue(refSource, (snap) => {
-              const data = snap.val() || {};
-              const items = Object.entries(data).map(([id, n]) => ({
-                id,
-                ...n,
-                source: key,
-              }));
-    
-              setNotifications((prev) => {
-                const filtered = prev.filter((n) => n.source !== key);
-                const newList = [...filtered, ...items].sort(
-                  (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-                );
-                return newList;
-              });
-            });
-          });
-    
-          return () => unsubscribes.forEach((unsub) => unsub());
-        };
-    
-        fetchNotifications();
-      }, [currentHospital, supervisorId, userId, currentHospitalId]);
-    
+                const data = snap.val() || {};
+                const items = Object.entries(data).map(([id, n]) => ({
+                    id,
+                    ...n,
+                    source: key,
+                }));
 
-      useEffect(() => {
+                setNotifications((prev) => {
+                    const filtered = prev.filter((n) => n.source !== key);
+                    const newList = [...filtered, ...items].sort(
+                        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    return newList;
+                });
+            });
+        });
+
+        return () => unsubscribes.forEach((unsub) => unsub());
+    }, [currentHospitalId, userId]);
+
+    useEffect(() => {
         const unread = notifications.filter((n) => !n.read).length;
         onUnreadCountChange?.(unread);
-      }, [notifications, onUnreadCountChange]);
-      
-      const markAsRead = async (notificationId, source) => {
+    }, [notifications, onUnreadCountChange]);
+
+    const markAsRead = async (notificationId, source) => {
         try {
-          let notificationRef;
-      
-          if (source === "supervisor" && currentHospitalId) {
-            notificationRef = ref(db, `notifications/supervisor_${currentHospitalId}/${notificationId}`);
-          } else if (source === "resposta" && userId) {
-            notificationRef = ref(db, `notifications/resposta_${userId}/${notificationId}`);
-          } else {
-            return; 
-          }
-      
-          await update(notificationRef, { read: true });
+            let notificationRef;
+
+            if (source === "supervisor" && currentHospitalId) {
+                notificationRef = ref(db, `notifications/supervisor_${currentHospitalId}/${notificationId}`);
+            } else if (source === "resposta" && userId) {
+                notificationRef = ref(db, `notifications/resposta_${userId}/${notificationId}`);
+            } else {
+                return;
+            }
+
+            await update(notificationRef, { read: true });
         } catch (error) {
             toast.error("Erro ao marcar notificação como lida.");
-          console.error("Erro ao marcar notificação como lida:", error);
+            console.error("Erro ao marcar notificação como lida:", error);
         }
-      };
-      
-    
+    };
+
     const handleNotificationClick = (notificationId, source) => {
         markAsRead(notificationId, source);
     };
 
     const clearAllNotifications = async () => {
         try {
-          await set(ref(db, `notifications/${userId}`), null);
-          setNotifications((prev) => prev.filter((n) => n.source !== "resposta" && n.source !== "supervisor"));
+            if (currentHospitalId) {
+                await set(ref(db, `notifications/supervisor_${currentHospitalId}`), null);
+            }
+            if (userId) {
+                await set(ref(db, `notifications/resposta_${userId}`), null);
+            }
+            setNotifications([]);
         } catch (err) {
-          toast.error("Erro ao limpar notificações:", err);
+            toast.error("Erro ao limpar notificações");
+            console.error("Erro ao limpar notificações:", err);
         }
-      };
+    };
 
     return (
         <AnimatePresence>
@@ -123,21 +121,24 @@ const Notifications = ({ currentHospital, currentHospitalId, supervisorId, userI
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    className={`p-3 border-b cursor-pointer hover:bg-gray-100 ${notification.read ? "bg-gray-50" : "bg-white"
-                                        }`}
+                                    className={`p-3 border-b cursor-pointer hover:bg-gray-100 ${
+                                        notification.read ? "bg-gray-50" : "bg-white"
+                                    }`}
                                     onClick={() => handleNotificationClick(notification.id, notification.source)}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <p className={`font-semibold ${notification.read ? "text-gray-600" : "text-gray-900"
-                                            }`}>
+                                        <p className={`font-semibold ${
+                                            notification.read ? "text-gray-600" : "text-gray-900"
+                                        }`}>
                                             {notification.title}
                                         </p>
                                         {!notification.read && (
                                             <span className="inline-block h-2 w-2 rounded-full bg-blue-500 ml-2"></span>
                                         )}
                                     </div>
-                                    <p className={`text-sm ${notification.read ? "text-gray-500" : "text-gray-700"
-                                        }`}>
+                                    <p className={`text-sm ${
+                                        notification.read ? "text-gray-500" : "text-gray-700"
+                                    }`}>
                                         {notification.message}
                                     </p>
                                     <p className="text-xs text-gray-400 mt-1">

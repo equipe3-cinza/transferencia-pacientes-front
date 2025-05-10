@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 
 const useNotifications = (currentHospital, currentHospitalId, supervisorId, userId) => {
   const [notifications, setNotifications] = useState([]);

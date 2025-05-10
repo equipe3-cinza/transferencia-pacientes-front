@@ -6,10 +6,12 @@ import { toast } from "react-toastify";
 
 const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes, hospitais }) => {
   const [transferencias, setTransferencias] = useState([]);
+  const [comodos, setComodos] = useState([]);
   const [novaTransferencia, setNovaTransferencia] = useState({
     pacienteId: "",
     hospitalDestinoId: "",
     hospitalDestinoNome: "",
+    comodoId: "",
     motivo: "",
   });
 
@@ -38,14 +40,48 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
     fetchTransferencias();
   }, [currentHospitalId]);
 
+  // Carregar cômodos quando o hospital de destino for selecionado
+  useEffect(() => {
+    if (!novaTransferencia.hospitalDestinoId) {
+      setComodos([]);
+      return;
+    }
+
+    const comodosRef = ref(db, "comodos");
+    const unsubscribe = onValue(comodosRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const comodosList = Object.entries(data)
+        .map(([id, comodo]) => ({
+          id,
+          ...comodo,
+        }))
+        .filter(comodo => 
+          comodo.hospital === novaTransferencia.hospitalDestinoId && 
+          comodo.disponivel
+        );
+      setComodos(comodosList);
+    });
+
+    return () => unsubscribe();
+  }, [novaTransferencia.hospitalDestinoId]);
+
   const handleSolicitarTransferencia = async (e) => {
     e.preventDefault();
 
-    const { pacienteId, hospitalDestinoId, hospitalDestinoNome, motivo } = novaTransferencia;
-    if (!pacienteId || !hospitalDestinoId || !hospitalDestinoNome || !motivo) return;
+    const { pacienteId, hospitalDestinoId, hospitalDestinoNome, comodoId, motivo } = novaTransferencia;
+    if (!pacienteId || !hospitalDestinoId || !hospitalDestinoNome || !comodoId || !motivo) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
 
     const paciente = pacientes.find(p => p.id === pacienteId);
     if (!paciente) return;
+
+    const comodo = comodos.find(c => c.id === comodoId);
+    if (!comodo) {
+      toast.error("Cômodo não encontrado");
+      return;
+    }
 
     const transferData = {
       paciente: {
@@ -55,6 +91,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       hospitalOrigem: currentHospital,
       hospitalDestinoId,
       hospitalDestinoNome,
+      comodoId,
+      comodoNome: comodo.nome,
       motivo,
       status: "pendente",
       solicitadoPor: user.uid,
@@ -70,7 +108,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
       // Notificar o supervisor do hospital de destino
       const notification = {
         title: "Nova solicitação de transferência",
-        message: `Paciente: ${paciente.nome} - Motivo: ${motivo}`,
+        message: `Paciente: ${paciente.nome} - Motivo: ${motivo} - Cômodo: ${comodo.nome}`,
         transferId: newTransferRef.key,
         timestamp: new Date().toISOString(),
         read: false,
@@ -84,6 +122,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         pacienteId: "",
         hospitalDestinoId: "",
         hospitalDestinoNome: "",
+        comodoId: "",
         motivo: "",
       });
 
@@ -142,6 +181,15 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         const userInfo = await getInfoUser(user.uid);
 
         if (!userInfo) return;
+
+        // Se aprovada, atualizar status do cômodo para ocupado
+        if (status === "aprovada") {
+          const comodoRef = ref(db, `comodos/${transfer.comodoId}`);
+          await update(comodoRef, {
+            disponivel: false
+          });
+        }
+
         // Atualizar status da transferência
         const transferRef = ref(db, `transferencias/hospital_${currentHospitalId}/${transfer.id}`);
         await update(transferRef, {
@@ -164,6 +212,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             hospitalOrigem: currentHospital,
             hospitalDestinoId: transferencia.hospitalDestinoId,
             hospitalDestinoNome: transferencia.hospitalDestinoNome,
+            comodoId: transferencia.comodoId,
+            comodoNome: transferencia.comodoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
@@ -177,6 +227,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             hospitalOrigem: currentHospital,
             hospitalDestinoId: transferencia.hospitalDestinoId,
             hospitalDestinoNome: transferencia.hospitalDestinoNome,
+            comodoId: transferencia.comodoId,
+            comodoNome: transferencia.comodoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
             nomeResponsavel: userInfo?.nome,
@@ -200,7 +252,6 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
         await push(notificationRef, notification);
         toast.success(`Transferência ${status} enviada com sucesso!`);
       }
-
 
     } catch (error) {
       toast.error("Erro ao responder transferência:", error);
@@ -241,6 +292,7 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                     ...novaTransferencia,
                     hospitalDestinoId: hospitalSelecionado?.id || "",
                     hospitalDestinoNome: hospitalSelecionado?.nome || "",
+                    comodoId: "", // Reset comodoId when hospital changes
                   });
                 }}
                 className="border rounded px-3 py-2 w-full bg-gray-900 text-white"
@@ -251,6 +303,25 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
                   <option key={hospital.id} value={hospital.id}>{hospital.nome}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-300">Cômodo:</label>
+              <select
+                value={novaTransferencia.comodoId}
+                onChange={(e) => setNovaTransferencia({ ...novaTransferencia, comodoId: e.target.value })}
+                className="border rounded px-3 py-2 w-full bg-gray-900 text-white"
+                required
+                disabled={!novaTransferencia.hospitalDestinoId}
+              >
+                <option value="">Selecione um cômodo</option>
+                {comodos.map(comodo => (
+                  <option key={comodo.id} value={comodo.id}>{comodo.nome}</option>
+                ))}
+              </select>
+              {!novaTransferencia.hospitalDestinoId && (
+                <p className="text-sm text-gray-400 mt-1">Selecione um hospital primeiro</p>
+              )}
             </div>
 
             <div>

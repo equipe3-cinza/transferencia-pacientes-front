@@ -8,38 +8,112 @@ import Navbar from "@/app/components/Navbar";
 import TransferRequests from "@/app/components/TransferRequests";
 import { getHospitalId, getInfoUser } from "@/Utils/funcUteis";
 import Prontuarios from "@/app/components/Prontuarios";
+import DisponibilidadeComodos from "@/app/components/DisponibilidadeComodos";
+import { toast } from "react-hot-toast";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
   const [nome, setNome] = useState("");
+  const [disponivel, setDisponivel] = useState(true);
+  const [hospitalSelecionado, setHospitalSelecionado] = useState("");
+  const [hospitais, setHospitais] = useState([]);
+
+  useEffect(() => {
+    if (tipo === "comodos") {
+      const hospitaisRef = ref(db, "hospitais");
+      const unsubscribe = onValue(hospitaisRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const hospitaisList = Object.entries(data).map(([id, hospital]) => ({
+          id,
+          ...hospital,
+        }));
+        setHospitais(hospitaisList);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [tipo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nome.trim()) return;
 
+    if (tipo === "comodos" && !hospitalSelecionado) {
+      toast.error("Selecione um hospital");
+      return;
+    }
+
     try {
       const tipoRef = ref(db, tipo);
       const novoRef = push(tipoRef);
-      await set(novoRef, { nome });
+      const dados = {
+        nome,
+        createdAt: new Date().toISOString()
+      };
 
+      // Se for um cômodo, adiciona a propriedade de disponibilidade e hospital
+      if (tipo === "comodos") {
+        dados.disponivel = disponivel;
+        dados.hospital = hospitalSelecionado;
+      }
+
+      await set(novoRef, dados);
       setNome("");
+      setDisponivel(true);
+      setHospitalSelecionado("");
+      toast.success(`${tipo} adicionado com sucesso!`);
     } catch (error) {
       console.error(`Erro ao adicionar ${tipo}`, error);
+      toast.error(`Erro ao adicionar ${tipo}`);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-      <input
-        type="text"
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        placeholder={`Adicionar ${tipo}`}
-        className="border rounded px-2 py-1 flex-1"
-      />
-      <button type="submit" className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 cursor-pointer">
-        Adicionar
-      </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-4">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder={`Adicionar ${tipo}`}
+          className="border rounded px-2 py-1 flex-1 bg-gray-800 text-white"
+        />
+        {tipo === "comodos" && (
+          <div className="flex items-center gap-2">
+            <label className="text-white">
+              <input
+                type="checkbox"
+                checked={disponivel}
+                onChange={(e) => setDisponivel(e.target.checked)}
+                className="mr-2"
+              />
+              Disponível
+            </label>
+          </div>
+        )}
+        <button type="submit" className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 cursor-pointer">
+          Adicionar
+        </button>
+      </div>
+
+      {tipo === "comodos" && (
+        <div className="flex gap-2 items-center">
+          <label className="text-white min-w-[100px]">Hospital:</label>
+          <select
+            value={hospitalSelecionado}
+            onChange={(e) => setHospitalSelecionado(e.target.value)}
+            className="border rounded px-2 py-1 flex-1 bg-gray-800 text-white"
+            required
+          >
+            <option value="">Selecione um hospital</option>
+            {hospitais.map((hospital) => (
+              <option key={hospital.id} value={hospital.id}>
+                {hospital.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </form>
   );
 };
@@ -139,7 +213,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-
       if (user) {
         setUser(user);
         try {
@@ -268,6 +341,17 @@ const Dashboard = () => {
                 user={user}
                 pacientes={dados.pacientes}
                 hospitais={dados.hospitais?.filter(h => h.nome !== currentHospital)}
+              />
+            </div>
+          )}
+
+          {/* Seção de Disponibilidade de Cômodos */}
+          {["medico", "enfermeiro", "supervisor", "administrador"].includes(userRole) && (
+            <div className="bg-gray-900 rounded-lg p-6 col-span-3">
+              <DisponibilidadeComodos
+                currentHospitalId={hospitalId}
+                userRole={userRole}
+                user={user}
               />
             </div>
           )}

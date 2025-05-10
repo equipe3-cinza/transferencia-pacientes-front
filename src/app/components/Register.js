@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { registerUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { get, ref } from "firebase/database";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.config";
 import { toast } from "react-toastify";
 
 
