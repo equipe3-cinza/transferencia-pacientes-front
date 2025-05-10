@@ -6,8 +6,8 @@ import { getUserRole } from "@/lib/auth";
 import { ref, push, set, update, remove, onValue } from "firebase/database";
 import Navbar from "@/app/components/Navbar";
 import TransferRequests from "@/app/components/TransferRequests";
-import { get } from "http";
 import { getHospitalId, getInfoUser } from "@/Utils/funcUteis";
+import Prontuarios from "@/app/components/Prontuarios";
 
 // Componente para adicionar novos registros
 const FormularioAdicionar = ({ tipo }) => {
@@ -235,37 +235,48 @@ const Dashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-black">
         Carregando...
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-black">
       <Navbar user={user} userRole={userRole} currentHospitalId={hospitalId} currentHospital={currentHospital} dataUser={userData} />
-      <div className="flex items-center justify-center bg-black">
-        <div className="p-8 rounded-lg shadow-md w-full max-w-md bg-gray-900">
-          <h1 className="text-3xl font-bold mb-8 text-center">
-            Dashboard do {currentHospital || "Hospital"}
-          </h1>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8 text-center text-white">
+          Dashboard do {currentHospital || "Hospital"}
+        </h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Seção de Prontuários */}
+          <div className="bg-gray-900 rounded-lg p-6">
+            <Prontuarios
+              currentHospital={currentHospital}
+              currentHospitalId={hospitalId}
+              userRole={userRole}
+            />
+          </div>
 
           {/* Seção de Transferências para Supervisores */}
           {userRole === "supervisor" && (
-            <TransferRequests
-              currentHospitalId={hospitalId}
-              currentHospital={currentHospital}
-              user={user}
-              pacientes={dados.pacientes}
-              hospitais={dados.hospitais?.filter(h => h.nome !== currentHospital)}
-            />
+            <div className="bg-gray-900 rounded-lg p-6 col-span-2">
+              <TransferRequests
+                currentHospitalId={hospitalId}
+                currentHospital={currentHospital}
+                user={user}
+                pacientes={dados.pacientes}
+                hospitais={dados.hospitais?.filter(h => h.nome !== currentHospital)}
+              />
+            </div>
           )}
 
           {userRole === "administrador" && (
-            <>
+            <div className="col-span-3">
               {Object.entries(dados).map(([tipo, registros]) => (
                 <div key={tipo} className="mb-12">
-                  <h2 className="text-2xl font-semibold mb-4 capitalize">{tipo}</h2>
+                  <h2 className="text-2xl font-semibold mb-4 capitalize text-white">{tipo}</h2>
                   <FormularioAdicionar tipo={tipo} onAdicionar={(novo) => adicionarRegistro(tipo, novo)} />
                   <ListaRegistros
                     registros={registros}
@@ -275,10 +286,8 @@ const Dashboard = () => {
                   />
                 </div>
               ))}
-
-            </>
+            </div>
           )}
-
         </div>
       </div>
     </div>

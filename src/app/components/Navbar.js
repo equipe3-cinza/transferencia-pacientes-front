@@ -1,14 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { BellIcon } from "@heroicons/react/24/outline";
 import Notifications from "@/app/components/Notifications";
+import { ref, onValue } from "firebase/database";
 
 const Navbar = ({ user, currentHospital, dataUser, currentHospitalId }) => {
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.uid || !currentHospitalId) return;
+
+    // Monitorar notificações do supervisor
+    const supervisorRef = ref(db, `notifications/supervisor_${currentHospitalId}`);
+    const supervisorUnsubscribe = onValue(supervisorRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const unreadSupervisor = Object.values(data).filter(n => !n.read).length;
+      
+      // Monitorar notificações de resposta
+      const respostaRef = ref(db, `notifications/resposta_${user.uid}`);
+      const respostaUnsubscribe = onValue(respostaRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const unreadResposta = Object.values(data).filter(n => !n.read).length;
+        
+        setUnreadCount(unreadSupervisor + unreadResposta);
+      });
+
+      return () => {
+        respostaUnsubscribe();
+      };
+    });
+
+    return () => {
+      supervisorUnsubscribe();
+    };
+  }, [user?.uid, currentHospitalId]);
 
   const handleLogout = async () => {
     try {

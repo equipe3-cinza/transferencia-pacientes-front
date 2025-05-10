@@ -5,7 +5,6 @@ import { getInfoUser } from "@/Utils/funcUteis";
 import { toast } from "react-toastify";
 
 const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes, hospitais }) => {
-  const [userData, setUserData] = useState(null);
   const [transferencias, setTransferencias] = useState([]);
   const [novaTransferencia, setNovaTransferencia] = useState({
     pacienteId: "",
@@ -97,12 +96,11 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
 
   const handleResponderTransferencia = async (transfer, status) => {
     try {
-
-      const justificativa = await new Promise((resolve, reject) => {
+      const justificativa = await new Promise((resolve) => {
         let inputValue = "";
     
         const toastId = toast.info(
-          ({ closeToast }) => (
+          () => (
             <div className="text-center">
               <p className="mb-2 font-semibold">Digite a justificativa:</p>
               <input
@@ -135,25 +133,23 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
           {
             autoClose: false,
             closeButton: false,
-            // position: "top-center",
             draggable: false,
           }
         );
       });
 
       if (justificativa) {
-        const userData = await getInfoUser(user.uid);
-        setUserData(userData);
+        const userInfo = await getInfoUser(user.uid);
 
-        if (!userData) return;
+        if (!userInfo) return;
         // Atualizar status da transferência
         const transferRef = ref(db, `transferencias/hospital_${currentHospitalId}/${transfer.id}`);
         await update(transferRef, {
           status,
           justificativa,
           respondidoPor: user?.uid,
-          nomeResponsavel: userData?.nome,
-          cargoResponsavel: userData?.role,
+          nomeResponsavel: userInfo?.nome,
+          cargoResponsavel: userInfo?.role,
           respondidoEm: new Date().toISOString(),
         });
 
@@ -170,8 +166,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             hospitalDestinoNome: transferencia.hospitalDestinoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
-            nomeResponsavel: userData?.nome,
-            cargoResponsavel: userData?.role,
+            nomeResponsavel: userInfo?.nome,
+            cargoResponsavel: userInfo?.role,
           });
 
           // Registrar entrada no hospital de destino
@@ -183,8 +179,8 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
             hospitalDestinoNome: transferencia.hospitalDestinoNome,
             data: new Date().toISOString(),
             responsavel: user.uid,
-            nomeResponsavel: userData?.nome,
-            cargoResponsavel: userData?.role,
+            nomeResponsavel: userInfo?.nome,
+            cargoResponsavel: userInfo?.role,
           });
 
           // Atualizar hospital atual do paciente
@@ -212,114 +208,111 @@ const TransferRequests = ({ currentHospital, currentHospitalId, user, pacientes,
   };
 
   return (
-    <div className="mb-12 ">
-      <h2 className="text-2xl font-semibold mb-4">Solicitações de Transferência</h2>
+    <div>
+      <h2 className="text-2xl font-semibold mb-4 text-white">Transferências</h2>
 
-      {/* Formulário para nova transferência */}
-      <div className="bg-gray-800 p-4 rounded-lg mb-6">
-        <h3 className="text-lg font-semibold mb-2">Solicitar Nova Transferência</h3>
-        <form onSubmit={handleSolicitarTransferencia} className="space-y-4">
-          <div>
-            <label className="block mb-1">Paciente:</label>
-            <select
-              value={novaTransferencia.pacienteId}
-              onChange={(e) => setNovaTransferencia({ ...novaTransferencia, pacienteId: e.target.value })}
-              className="border rounded px-3 py-2 w-full bg-gray-900"
-              required
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Formulário para nova transferência */}
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2 text-white">Solicitar Nova Transferência</h3>
+          <form onSubmit={handleSolicitarTransferencia} className="space-y-4">
+            <div>
+              <label className="block mb-1 text-gray-300">Paciente:</label>
+              <select
+                value={novaTransferencia.pacienteId}
+                onChange={(e) => setNovaTransferencia({ ...novaTransferencia, pacienteId: e.target.value })}
+                className="border rounded px-3 py-2 w-full bg-gray-900 text-white"
+                required
+              >
+                <option value="">Selecione um paciente</option>
+                {pacientes?.map(paciente => (
+                  <option key={paciente.id} value={paciente.id}>{paciente.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-300">Hospital de Destino:</label>
+              <select
+                value={novaTransferencia.hospitalDestinoId}
+                onChange={(e) => {
+                  const hospitalSelecionado = hospitais.find(h => h.id === e.target.value);
+                  setNovaTransferencia({
+                    ...novaTransferencia,
+                    hospitalDestinoId: hospitalSelecionado?.id || "",
+                    hospitalDestinoNome: hospitalSelecionado?.nome || "",
+                  });
+                }}
+                className="border rounded px-3 py-2 w-full bg-gray-900 text-white"
+                required
+              >
+                <option value="">Selecione um hospital</option>
+                {hospitais?.map(hospital => (
+                  <option key={hospital.id} value={hospital.id}>{hospital.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-300">Motivo:</label>
+              <textarea
+                value={novaTransferencia.motivo}
+                onChange={(e) => setNovaTransferencia({ ...novaTransferencia, motivo: e.target.value })}
+                className="border rounded px-3 py-2 w-full bg-gray-900 text-white"
+                rows="3"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 cursor-pointer w-full"
             >
-              <option value="">Selecione um paciente</option>
-              {pacientes?.map(paciente => (
-                <option key={paciente.id} value={paciente.id}>{paciente.nome}</option>
-              ))}
-            </select>
-          </div>
+              Solicitar Transferência
+            </button>
+          </form>
+        </div>
 
-          <div>
-            <label className="block mb-1">Hospital de Destino:</label>
-            <select
-              value={novaTransferencia.hospitalDestinoId}
-              onChange={(e) => {
-                const hospitalSelecionado = hospitais.find(h => h.id === e.target.value);
-                setNovaTransferencia({
-                  ...novaTransferencia,
-                  hospitalDestinoId: hospitalSelecionado?.id || "",
-                  hospitalDestinoNome: hospitalSelecionado?.nome || "",
-                });
-              }}
-              className="border rounded px-3 py-2 w-full bg-gray-900"
-              required
-            >
-              <option value="">Selecione um hospital</option>
-              {hospitais?.map(hospital => (
-                <option key={hospital.id} value={hospital.id}>{hospital.nome}</option>
-              ))}
-            </select>
-          </div>
+        {/* Lista de transferências pendentes */}
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2 text-white">Transferências Pendentes</h3>
+          {transferencias.length === 0 || !transferencias.some(transfer => 
+            transfer.status === "pendente" && transfer.hospitalDestinoId === currentHospitalId
+          ) ? (
+            <p className="text-gray-300">Nenhuma transferência pendente</p>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {transferencias.map(transfer => (
+                <div key={transfer.id} className="border border-gray-700 p-4 rounded-lg bg-gray-900">
+                  {transfer.status === "pendente" && transfer.hospitalDestinoId === currentHospitalId && (
+                    <div className="space-y-2">
+                      <p className="text-gray-300"><strong>Paciente:</strong> {transfer.paciente.nome}</p>
+                      <p className="text-gray-300"><strong>Hospital de Origem:</strong> {transfer.hospitalOrigem}</p>
+                      <p className="text-gray-300"><strong>Hospital de Destino:</strong> {transfer.hospitalDestinoNome}</p>
+                      <p className="text-gray-300"><strong>Motivo:</strong> {transfer.motivo}</p>
+                      <p className="text-gray-300"><strong>Status:</strong> {transfer.status}</p>
 
-          <div>
-            <label className="block mb-1">Motivo:</label>
-            <textarea
-              value={novaTransferencia.motivo}
-              onChange={(e) => setNovaTransferencia({ ...novaTransferencia, motivo: e.target.value })}
-              className="border rounded px-3 py-2 w-full bg-gray-900"
-              rows="3"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 cursor-pointer"
-          >
-            Solicitar Transferência
-          </button>
-        </form>
-      </div>
-
-      {/* Lista de transferências pendentes */}
-      <div className="bg-gray-50 p-4 rounded-lg bg-gray-800">
-        <h3 className="text-lg font-semibold mb-2">Transferências Pendentes</h3>
-        {transferencias.length === 0 || transferencias.every(transfer => transfer.status !== "pendente") ? (
-          <p>Nenhuma transferência pendente</p>
-        ) : (
-          <ul className="space-y-4">
-            {transferencias.map(transfer => (
-              <li key={transfer.id} className="border p-4 rounded-lg">
-                {transfer.status === "pendente" && transfer.hospitalDestinoId === currentHospitalId && (
-                  <div className="space-y-2">
-                    <p><strong>Paciente:</strong> {transfer.paciente.nome}</p>
-                    <p><strong>Hospital de Origem:</strong> {transfer.hospitalOrigem}</p>
-                    <p><strong>Hospital de Destino:</strong> {transfer.hospitalDestinoNome}</p>
-                    <p><strong>Motivo:</strong> {transfer.motivo}</p>
-                    <p><strong>Status:</strong> {transfer.status}</p>
-
-                    <div className="pt-4 flex gap-2">
-                      <button
-                        onClick={() => {
-                          handleResponderTransferencia(transfer, "aprovada");
-                   
-                        }}
-                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 cursor-pointer"
-                      >
-                        Aprovar
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleResponderTransferencia(transfer, "negada");
-          
-                        }}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 cursor-pointer"
-                      >
-                        Negar
-                      </button>
+                      <div className="pt-4 flex gap-2">
+                        <button
+                          onClick={() => handleResponderTransferencia(transfer, "aprovada")}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 cursor-pointer flex-1"
+                        >
+                          Aprovar
+                        </button>
+                        <button
+                          onClick={() => handleResponderTransferencia(transfer, "negada")}
+                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 cursor-pointer flex-1"
+                        >
+                          Negar
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-
-        )}
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
