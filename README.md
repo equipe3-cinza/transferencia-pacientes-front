@@ -11,7 +11,6 @@
 ## **Equipe Cinza**
 
 - Alan Brilhante Coutinho
-- Caio Alexandre Oliveira Alves
 - Fabricio da Silva Pires
 - Lucas Araujo Ribeiro
 - Wilglison Rilniky Oliveira dos Santos
