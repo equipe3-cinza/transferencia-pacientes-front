@@ -21,6 +21,7 @@
 Frontend:
 - Next.js
 - SweetAlert2
+
 Backend:
 - Firebase Authentication
 - Firebase Realtime Database
